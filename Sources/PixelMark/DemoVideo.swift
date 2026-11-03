@@ -3,21 +3,31 @@ import AppKit
 import Carbon.HIToolbox
 import ScreenCaptureKit
 
-/// Records the feature walkthrough for the website (Debug builds only):
+/// Records the walkthroughs for the website (Debug builds only):
 ///   PIXELMARK_DEMO_IMAGE=backdrop.png PIXELMARK_HARNESS=video:/path/to/out.mov PixelMark
+///   PIXELMARK_DEMO_IMAGE=backdrop.png PIXELMARK_HARNESS=video-new:/path/to/out.mov PixelMark
 /// The overlay runs behind other windows and ScreenCaptureKit records just that window,
 /// so the screen stays usable while it plays.
 @MainActor
 final class DemoVideo {
+    enum Script {
+        /// Every feature, for the site's tour.
+        case tour
+        /// What's new in 1.2.
+        case whatsNew
+    }
+
     private let session: MeasureSession
     private let overlay: OverlayView
+    private let script: Script
     private let recorder = WindowRecorder()
     private var cursor = CGPoint(x: 960, y: 760)
     private var activity: NSObjectProtocol?
 
-    init(session: MeasureSession, overlay: OverlayView) {
+    init(session: MeasureSession, overlay: OverlayView, script: Script) {
         self.session = session
         self.overlay = overlay
+        self.script = script
     }
 
     func run(to url: URL) {
@@ -33,7 +43,10 @@ final class DemoVideo {
                 overlay.simulateMove(to: cursor)
                 try await recorder.start(window: window, url: url)
                 startedAt = Date()
-                try await script()
+                switch script {
+                case .tour: try await tour()
+                case .whatsNew: try await whatsNew()
+                }
                 try await recorder.stop()
                 print("VIDEO_DONE \(url.path)")
             } catch {
@@ -44,9 +57,9 @@ final class DemoVideo {
         }
     }
 
-    // MARK: - The walkthrough
+    // MARK: - The walkthroughs
 
-    private func script() async throws {
+    private func tour() async throws {
         let settings = AppSettings.shared
         try await move(to: CGPoint(x: 880, y: 640), duration: 1.0)
         try await wait(0.3)
@@ -121,7 +134,7 @@ final class DemoVideo {
 
         caption(["H", "V"], "Drop guides to check alignment")
         press("x")
-        for (point, key) in [(CGPoint(x: 643, y: 600), "v"), (CGPoint(x: 1514, y: 600), "v"), (CGPoint(x: 1000, y: 333), "h"), (CGPoint(x: 1000, y: 465), "h")] {
+        for (point, key) in [(CGPoint(x: 642, y: 600), "v"), (CGPoint(x: 1515, y: 600), "v"), (CGPoint(x: 1000, y: 328), "h"), (CGPoint(x: 1000, y: 466), "h")] {
             try await move(to: point, duration: 0.6)
             press(key)
             try await wait(0.35)
@@ -161,6 +174,146 @@ final class DemoVideo {
         try await wait(1.6)
     }
 
+    private func whatsNew() async throws {
+        let settings = AppSettings.shared
+        settings.tolerance = 4 // so boxes snap to the cards, not just their text
+        let button = (start: CGPoint(x: 1352, y: 230), end: CGPoint(x: 1540, y: 310))
+        let cards = [
+            (CGPoint(x: 630, y: 320), CGPoint(x: 930, y: 478)),
+            (CGPoint(x: 930, y: 320), CGPoint(x: 1228, y: 478)),
+            (CGPoint(x: 1228, y: 320), CGPoint(x: 1528, y: 478)),
+        ]
+        try await move(to: CGPoint(x: 880, y: 640), duration: 0.8)
+        try await wait(0.2)
+
+        caption(["⇧⌘2"], "New in PixelMark 1.2")
+        try await wait(0.9)
+        overlay.demoHidesMarks = false
+        settings.showHelperBar = true
+        try await wait(1.4)
+
+        caption(["R"], "Rulers along the edges of the screen")
+        press("r")
+        try await move(to: CGPoint(x: 1078, y: 600), duration: 1.0)
+        try await move(to: CGPoint(x: 760, y: 420), duration: 1.0)
+        try await wait(0.6)
+
+        caption(["P"], "Positions for every box")
+        press("p")
+        try await move(to: button.start, duration: 0.8)
+        try await drag(to: button.end, duration: 0.9)
+        try await wait(1.4)
+
+        caption(["⌃"], "Hold Control to see the padding inside a box")
+        try await move(to: CGPoint(x: 1444, y: 268), duration: 0.7)
+        try await move(to: CGPoint(x: 1446, y: 270), duration: 0.2, flags: .control)
+        try await wait(2.6)
+        try await move(to: CGPoint(x: 1444, y: 380), duration: 0.5)
+
+        caption(["A"], "Aspect ratios on boxes")
+        press("a")
+        try await move(to: cards[0].0, duration: 0.7)
+        try await drag(to: cards[0].1, duration: 0.8)
+        try await wait(1.4)
+
+        caption(["Drag"], "Boxes that are the same size get an = mark")
+        for (start, end) in cards.dropFirst() {
+            try await move(to: start, duration: 0.5)
+            try await drag(to: end, duration: 0.6)
+        }
+        try await move(to: CGPoint(x: 1078, y: 560), duration: 0.6)
+        try await wait(1.6)
+
+        caption(["⌥⌘C"], "Copy every measurement as a list")
+        press("c", flags: [.command, .option])
+        try await wait(1.8)
+
+        caption(["⌘Z", "⇧⌘Z"], "Undo and redo")
+        press("z", flags: .command)
+        try await wait(0.6)
+        press("z", flags: .command)
+        try await wait(0.9)
+        press("z", flags: [.command, .shift])
+        try await wait(0.6)
+        press("z", flags: [.command, .shift])
+        try await wait(1.0)
+
+        caption(["⌘", "Drag"], "Measure between any two points")
+        press("x")
+        settings.showRulers = false
+        settings.showPositions = false
+        settings.showAspectRatio = false
+        try await move(to: CGPoint(x: 802, y: 661), duration: 0.8)
+        try await drag(to: CGPoint(x: 1078, y: 567), duration: 1.1, line: true)
+        try await wait(0.5)
+        try await move(to: CGPoint(x: 1078, y: 567), duration: 0.1)
+        try await drag(to: CGPoint(x: 1354, y: 599), duration: 1.0, line: true)
+        try await move(to: CGPoint(x: 1220, y: 820), duration: 0.6)
+        try await wait(1.2)
+
+        caption(["⇧H", "⇧V"], "Guides through the center of a box")
+        press("x")
+        try await move(to: cards[1].0, duration: 0.6)
+        try await drag(to: cards[1].1, duration: 0.7)
+        try await move(to: CGPoint(x: 1120, y: 380), duration: 0.5)
+        press("v", flags: .shift)
+        try await wait(0.4)
+        press("h", flags: .shift)
+        try await wait(1.6)
+
+        caption(["G"], "A layout grid that starts at any box")
+        press("g")
+        try await wait(1.2)
+        try await move(to: CGPoint(x: 1000, y: 640), duration: 0.9)
+        try await wait(1.0)
+        press("x")
+
+        caption(["Z"], "Zoom the loupe in and out")
+        try await move(to: CGPoint(x: 646, y: 262), duration: 0.8)
+        try await wait(0.5)
+        press("z")
+        try await wait(1.1)
+        press("z")
+        try await wait(1.1)
+        press("z")
+        try await wait(0.8)
+
+        caption(["K"], "Check contrast between two colors")
+        try await move(to: CGPoint(x: 1200, y: 232), duration: 0.7)
+        press("k")
+        try await wait(0.9)
+        try await move(to: CGPoint(x: 1392, y: 258), duration: 0.8)
+        try await wait(1.3)
+        try await move(to: CGPoint(x: 800, y: 712), duration: 0.9)
+        try await wait(1.3)
+
+        caption(["⇧C", "C"], "Copy colors as hex, RGB, HSL or SwiftUI")
+        press("k", flags: .shift)
+        try await move(to: CGPoint(x: 1078, y: 680), duration: 0.8)
+        for _ in 0..<2 {
+            press("c", flags: .shift)
+            try await wait(1.1)
+        }
+        press("c")
+        try await wait(1.6)
+
+        caption(["M"], "Switch the mark color")
+        try await move(to: button.start, duration: 0.7)
+        try await drag(to: button.end, duration: 0.8)
+        try await move(to: CGPoint(x: 1200, y: 400), duration: 0.6)
+        for _ in 0..<3 {
+            press("m")
+            try await wait(0.8)
+        }
+        try await wait(0.4)
+
+        caption(["?"], "Every shortcut, one key away")
+        press("?")
+        try await wait(3.0)
+        press("", code: kVK_Escape)
+        try await wait(1.2)
+    }
+
     // MARK: - Actions
 
     private var startedAt = Date()
@@ -188,7 +341,7 @@ final class DemoVideo {
         }
     }
 
-    private func drag(to target: CGPoint, duration: Double) async throws {
+    private func drag(to target: CGPoint, duration: Double, line: Bool = false) async throws {
         let start = cursor
         overlay.showDemoPress(at: start)
         let frames = max(1, Int(duration * 60))
@@ -196,7 +349,7 @@ final class DemoVideo {
             let t = Double(frame) / Double(frames)
             let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
             cursor = CGPoint(x: start.x + (target.x - start.x) * eased, y: start.y + (target.y - start.y) * eased)
-            overlay.simulateDrag(from: start, to: cursor, release: frame == frames)
+            overlay.simulateDrag(from: start, to: cursor, release: frame == frames, line: line)
             try await Task.sleep(for: .milliseconds(16))
         }
         overlay.simulateMove(to: cursor)

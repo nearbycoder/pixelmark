@@ -88,4 +88,56 @@ final class PixelBufferTests: XCTestCase {
         XCTAssertEqual(OverlayScene.format(160.5, scale: 2, unit: .pixels), "321")
         XCTAssertEqual(OverlayScene.format(48, scale: 2, unit: .points), "48")
     }
+
+    func testInnerContentFindsAButtonLabel() {
+        // A blue button with rounded (here, notched) white corners and a white label inside.
+        let blue: UInt32 = 0x3355EE
+        let buffer = canvas(width: 60, height: 30, rects: [
+            (10, 5, 40, 20, blue),
+            (10, 5, 4, 4, white), (46, 5, 4, 4, white), (10, 21, 4, 4, white), (46, 21, 4, 4, white),
+            (22, 12, 16, 6, white),
+        ])
+        let button = PixelRect(minX: 10, minY: 5, maxX: 50, maxY: 25)
+        XCTAssertEqual(buffer.innerContentBounds(in: button, inset: 2, tolerance: 0), PixelRect(minX: 22, minY: 12, maxX: 38, maxY: 18))
+        // A flat box has no inner content.
+        let flat = canvas(width: 60, height: 30, rects: [(10, 5, 40, 20, blue)])
+        XCTAssertNil(flat.innerContentBounds(in: button, inset: 2, tolerance: 0))
+    }
+
+    func testContrastRatio() {
+        XCTAssertEqual(PixelBuffer.contrastRatio(white, black), 21, accuracy: 0.01)
+        XCTAssertEqual(PixelBuffer.contrastRatio(white, white), 1, accuracy: 0.001)
+        // #767676 on white is the classic 4.5:1 gray.
+        XCTAssertEqual(PixelBuffer.contrastRatio(0x767676, white), 4.54, accuracy: 0.01)
+        XCTAssertEqual(OverlayScene.contrastRating(4.54), "AA")
+        XCTAssertEqual(OverlayScene.contrastRating(2.1), "Fail")
+    }
+
+    func testAspectRatio() {
+        XCTAssertEqual(OverlayScene.aspectRatio(width: 1920, height: 1080), "16:9")
+        XCTAssertEqual(OverlayScene.aspectRatio(width: 300, height: 300), "1:1")
+        XCTAssertEqual(OverlayScene.aspectRatio(width: 641, height: 360), "≈16:9")
+        XCTAssertEqual(OverlayScene.aspectRatio(width: 370, height: 200), "1.85:1")
+        XCTAssertEqual(OverlayScene.aspectRatio(width: 397, height: 211), "1.88:1")
+        XCTAssertNil(OverlayScene.aspectRatio(width: 0, height: 10))
+    }
+
+    func testColorFormats() {
+        let pink: UInt32 = 0xFF3D7F
+        XCTAssertEqual(ColorFormat.hex.format(pink), "#FF3D7F")
+        XCTAssertEqual(ColorFormat.rgb.format(pink), "rgb(255, 61, 127)")
+        XCTAssertEqual(ColorFormat.hsl.format(pink), "hsl(340, 100%, 62%)")
+        XCTAssertEqual(ColorFormat.hsl.format(0x808080), "hsl(0, 0%, 50%)")
+        XCTAssertEqual(ColorFormat.swiftUI.format(pink), "Color(red: 1.000, green: 0.239, blue: 0.498)")
+    }
+
+    func testLineAngle() {
+        XCTAssertEqual(RulerLine(from: .zero, to: CGPoint(x: 10, y: 0)).angle, 0)
+        // Screen y grows downward, so going up and to the right is 45°.
+        XCTAssertEqual(RulerLine(from: .zero, to: CGPoint(x: 10, y: -10)).angle, 45)
+        XCTAssertEqual(RulerLine(from: .zero, to: CGPoint(x: 0, y: 10)).angle, 90)
+        // Down and to the right reads as its angle from horizontal, too.
+        XCTAssertEqual(RulerLine(from: .zero, to: CGPoint(x: 10, y: 10)).angle, 45)
+        XCTAssertEqual(RulerLine(from: .zero, to: CGPoint(x: 3, y: 4)).length, 5)
+    }
 }

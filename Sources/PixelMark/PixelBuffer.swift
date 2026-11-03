@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 
 /// An integer rectangle in pixel space (top-left origin, inclusive min, exclusive max).
 struct PixelRect: Equatable {
@@ -111,29 +112,64 @@ final class PixelBuffer {
     /// Shrinks `rect` to the tightest box around anything that differs from the region's background
     /// (the most common corner color). Returns nil when the region is a single flat color.
     func contentBounds(in rect: PixelRect, tolerance: Int) -> PixelRect? {
-        let r = PixelRect(
-            minX: max(0, rect.minX), minY: max(0, rect.minY),
-            maxX: min(width, rect.maxX), maxY: min(height, rect.maxY)
-        )
+        let r = clamped(rect)
         guard !r.isEmpty else { return nil }
+        let corners = [color(x: r.minX, y: r.minY), color(x: r.maxX - 1, y: r.minY), color(x: r.minX, y: r.maxY - 1), color(x: r.maxX - 1, y: r.maxY - 1)]
+        return contentBounds(in: r, background: Self.mostCommon(corners, tolerance: tolerance), tolerance: tolerance)
+    }
 
+    /// The content inside a box, such as a button's label: the box is inset past its border and
+    /// rounded corners, and the background is its fill, taken from the middle of each edge.
+    func innerContentBounds(in rect: PixelRect, inset: Int, tolerance: Int) -> PixelRect? {
+        let r = clamped(PixelRect(minX: rect.minX + inset, minY: rect.minY + inset, maxX: rect.maxX - inset, maxY: rect.maxY - inset))
+        guard r.width > 2, r.height > 2 else { return nil }
+        let midX = (r.minX + r.maxX) / 2, midY = (r.minY + r.maxY) / 2
+        let edges = [color(x: midX, y: r.minY), color(x: midX, y: r.maxY - 1), color(x: r.minX, y: midY), color(x: r.maxX - 1, y: midY)]
+        let fill = Self.mostCommon(edges, tolerance: tolerance)
+
+        // Rounded corners leave the outside showing in the box's corners. Walking in diagonally covers
+        // about 0.29 of the radius, which gives the square to skip in each corner.
+        var diagonal = 0
+        let limit = min(r.width, r.height) / 2
+        for (x, y, dx, dy) in [(r.minX, r.minY, 1, 1), (r.maxX - 1, r.minY, -1, 1), (r.minX, r.maxY - 1, 1, -1), (r.maxX - 1, r.maxY - 1, -1, -1)] {
+            var d = 0
+            while d < limit, Self.differs(color(x: x + d * dx, y: y + d * dy), fill, tolerance: tolerance) { d += 1 }
+            diagonal = max(diagonal, d)
+        }
+        guard diagonal < limit else { return nil }
+        let corner = diagonal == 0 ? 0 : min(Int((Double(diagonal + inset) / 0.29).rounded(.up)) - inset, limit - 1)
+        guard let content = contentBounds(in: r, background: fill, tolerance: tolerance, corner: corner),
+              content != r else { return nil }
+        return content
+    }
+
+    private func clamped(_ rect: PixelRect) -> PixelRect {
+        PixelRect(minX: max(0, rect.minX), minY: max(0, rect.minY), maxX: min(width, rect.maxX), maxY: min(height, rect.maxY))
+    }
+
+    private static func mostCommon(_ colors: [UInt32], tolerance: Int) -> UInt32 {
+        colors.max { a, b in
+            colors.filter { !differs($0, a, tolerance: tolerance) }.count < colors.filter { !differs($0, b, tolerance: tolerance) }.count
+        }!
+    }
+
+    /// - Parameter corner: size of the square in each corner to ignore.
+    private func contentBounds(in r: PixelRect, background: UInt32, tolerance: Int, corner: Int = 0) -> PixelRect? {
+        guard !r.isEmpty else { return nil }
         return pixels.withUnsafeBufferPointer { buffer -> PixelRect? in
-            let corners = [
-                buffer[r.minY * width + r.minX], buffer[r.minY * width + r.maxX - 1],
-                buffer[(r.maxY - 1) * width + r.minX], buffer[(r.maxY - 1) * width + r.maxX - 1],
-            ]
-            let background = corners.max { a, b in
-                corners.filter { !Self.differs($0, a, tolerance: tolerance) }.count
-                    < corners.filter { !Self.differs($0, b, tolerance: tolerance) }.count
-            }!
-
             func rowHasContent(_ y: Int) -> Bool {
                 let base = y * width
-                for x in r.minX..<r.maxX where Self.differs(buffer[base + x], background, tolerance: tolerance) { return true }
+                let nearCorner = y < r.minY + corner || y >= r.maxY - corner
+                let x0 = nearCorner ? r.minX + corner : r.minX, x1 = nearCorner ? r.maxX - corner : r.maxX
+                guard x0 < x1 else { return false }
+                for x in x0..<x1 where Self.differs(buffer[base + x], background, tolerance: tolerance) { return true }
                 return false
             }
             func columnHasContent(_ x: Int, _ y0: Int, _ y1: Int) -> Bool {
-                for y in y0..<y1 where Self.differs(buffer[y * width + x], background, tolerance: tolerance) { return true }
+                let nearCorner = x < r.minX + corner || x >= r.maxX - corner
+                let from = nearCorner ? max(y0, r.minY + corner) : y0, to = nearCorner ? min(y1, r.maxY - corner) : y1
+                guard from < to else { return false }
+                for y in from..<to where Self.differs(buffer[y * width + x], background, tolerance: tolerance) { return true }
                 return false
             }
 
@@ -153,5 +189,18 @@ final class PixelBuffer {
 
     static func hex(_ color: UInt32) -> String {
         String(format: "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF)
+    }
+
+    /// WCAG 2 contrast ratio between two colors, from 1 to 21.
+    static func contrastRatio(_ a: UInt32, _ b: UInt32) -> Double {
+        func luminance(_ c: UInt32) -> Double {
+            func channel(_ v: UInt32) -> Double {
+                let s = Double(v & 0xFF) / 255
+                return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channel(c >> 16) + 0.7152 * channel(c >> 8) + 0.0722 * channel(c)
+        }
+        let la = luminance(a), lb = luminance(b)
+        return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
     }
 }

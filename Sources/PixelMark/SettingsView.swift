@@ -79,8 +79,8 @@ struct SettingsPane: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
-        .frame(width: 480)
+        .scrollDisabled(tab != .shortcuts)
+        .frame(width: 480, height: tab == .shortcuts ? 560 : nil)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -123,6 +123,19 @@ struct SettingsPane: View {
             Toggle("Show loupe", isOn: $settings.showLoupe)
             Toggle("Show helper bar", isOn: $settings.showHelperBar)
         }
+
+        Section {
+            Toggle("Rulers", isOn: $settings.showRulers)
+            Toggle("Aspect ratios on boxes", isOn: $settings.showAspectRatio)
+            Toggle("Positions on boxes", isOn: $settings.showPositions)
+            Picker("Grid size", selection: $settings.gridSize) {
+                ForEach(AppSettings.gridSizes, id: \.self) { Text("\($0) pt").tag($0) }
+            }
+        } header: {
+            Text("Extras")
+        } footer: {
+            Text("Toggle these while measuring with R, A and P. G shows the grid, starting at the hovered box.")
+        }
     }
 
     @ViewBuilder
@@ -135,6 +148,16 @@ struct SettingsPane: View {
             Text("Copy dimensions (⌘C)")
         } footer: {
             Text(settings.copyFormat.example).font(.system(.callout, design: .monospaced))
+        }
+
+        Section {
+            Picker("Format", selection: $settings.colorFormat) {
+                ForEach(ColorFormat.allCases) { Text($0.title).tag($0) }
+            }
+        } header: {
+            Text("Copy colors (C)")
+        } footer: {
+            Text(settings.colorFormat.format(0xFF3D7F)).font(.system(.callout, design: .monospaced))
         }
 
         Section {

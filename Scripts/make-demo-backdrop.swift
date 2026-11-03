@@ -25,7 +25,7 @@ struct Desktop: View {
             wallpaper
             menuBar
             AppWindow()
-                .frame(width: 1180, height: 720)
+                .frame(width: 1182, height: 720) // even card widths, so they measure the same
                 .position(x: size.width / 2, y: size.height / 2 + 24)
         }
         .frame(width: size.width, height: size.height)

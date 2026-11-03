@@ -21,11 +21,34 @@ struct Gap: Equatable {
     var isHorizontal: Bool { from.y == to.y }
 }
 
+/// A point-to-point measurement, drawn with ⌘-drag.
+struct RulerLine: Equatable {
+    var from: CGPoint
+    var to: CGPoint
+    var length: CGFloat { hypot(to.x - from.x, to.y - from.y) }
+    /// Degrees from horizontal, 0–90, whichever way it slopes.
+    var angle: Int {
+        let degrees = abs(atan2(to.y - from.y, to.x - from.x) * 180 / .pi)
+        return Int(min(degrees, 180 - degrees).rounded())
+    }
+}
+
 struct Loupe {
     var image: CGImage
     /// The pixel under the cursor.
     var pixel: (x: Int, y: Int)
-    var hex: String
+    /// How many pixels across it shows.
+    var cells: Int
+    var label: String
+    var color: UInt32
+    /// The color picked with K, to check contrast against.
+    var reference: UInt32?
+}
+
+/// The space between a box's edges and the content inside it.
+struct Padding: Equatable {
+    var box: CGRect
+    var content: CGRect
 }
 
 /// Everything one screen's overlay shows, in points with a top-left origin.
@@ -44,6 +67,16 @@ struct OverlayScene {
     var dragSnapped: CGRect?
     var gaps: [Gap] = []
     var loupe: Loupe?
+    var lines: [RulerLine] = []
+    var dragLine: RulerLine?
+    var padding: Padding?
+    /// Layout grid spacing and where it starts.
+    var grid: (size: CGFloat, origin: CGPoint)?
+    var showsRulers = false
+    var showsAspectRatio = false
+    var showsPositions = false
+    /// The pointer, marked on the rulers.
+    var pointer: CGPoint?
 
     /// A length in the chosen unit, e.g. "320", "160.5".
     func format(_ length: CGFloat) -> String {
@@ -63,6 +96,39 @@ struct OverlayScene {
     func dimensions(_ size: CGSize) -> String {
         "\(format(size.width)) × \(format(size.height))"
     }
+
+    /// A box's size label, with its aspect ratio when that's turned on.
+    func boxLabel(_ size: CGSize) -> String {
+        guard showsAspectRatio,
+              let ratio = Self.aspectRatio(width: Int((size.width * scale).rounded()), height: Int((size.height * scale).rounded()))
+        else { return dimensions(size) }
+        return "\(dimensions(size))  \(ratio)"
+    }
+
+    /// "16:9" when the sides reduce to small numbers, "≈16:9" when close to a common ratio, else "1.85:1".
+    static func aspectRatio(width: Int, height: Int) -> String? {
+        guard width > 0, height > 0 else { return nil }
+        func gcd(_ a: Int, _ b: Int) -> Int { b == 0 ? a : gcd(b, a % b) }
+        let divisor = gcd(width, height)
+        let (a, b) = (width / divisor, height / divisor)
+        if a <= 32 && b <= 32 { return "\(a):\(b)" }
+        let ratio = Double(width) / Double(height)
+        let common = [(1, 1), (5, 4), (4, 3), (3, 2), (16, 10), (16, 9), (2, 1), (21, 9)]
+        for (x, y) in common + common.map({ ($1, $0) }) where abs(ratio - Double(x) / Double(y)) / ratio < 0.01 {
+            return "≈\(x):\(y)"
+        }
+        return ratio >= 1 ? String(format: "%.2f:1", ratio) : String(format: "1:%.2f", 1 / ratio)
+    }
+
+    /// WCAG rating for a contrast ratio.
+    static func contrastRating(_ ratio: Double) -> String {
+        switch ratio {
+        case 7...: "AAA"
+        case 4.5...: "AA"
+        case 3...: "AA Large"
+        default: "Fail"
+        }
+    }
 }
 
 enum OverlayRenderer {
@@ -74,13 +140,19 @@ enum OverlayRenderer {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         let accent = scene.accent
 
+        if let grid = scene.grid { drawGrid(grid.size, origin: grid.origin, scene: scene, ctx: ctx) }
         drawAlignment(scene, ctx: ctx)
         drawGuides(scene, ctx: ctx)
 
+        let tolerance = 0.5 / scene.scale
         for (index, box) in scene.boxes.enumerated() {
             let hovered = index == scene.hoveredBox
-            // While showing spacing, the gaps are the story; the box's own size label would collide with them.
-            drawBox(box, scene: scene, ctx: ctx, emphasized: hovered, showsLabel: !(hovered && !scene.gaps.isEmpty))
+            let matches = scene.boxes.indices.contains { other in
+                other != index && abs(scene.boxes[other].width - box.width) < tolerance && abs(scene.boxes[other].height - box.height) < tolerance
+            }
+            // While showing spacing or padding, the gaps are the story; the box's own size label would collide with them.
+            let busy = hovered && (!scene.gaps.isEmpty || scene.padding != nil)
+            drawBox(box, scene: scene, ctx: ctx, emphasized: hovered, showsLabel: !busy, matches: matches)
         }
         for pin in scene.pins {
             drawCrosshair(pin, scene: scene, ctx: ctx, labelNear: pin.point)
@@ -101,9 +173,21 @@ enum OverlayRenderer {
         for gap in scene.gaps {
             drawGap(gap, scene: scene, ctx: ctx)
         }
+        if let padding = scene.padding {
+            drawPadding(padding, scene: scene, ctx: ctx)
+        }
+        for line in scene.lines {
+            drawLine(line, scene: scene, ctx: ctx)
+        }
+        if let line = scene.dragLine {
+            drawLine(line, scene: scene, ctx: ctx)
+        }
 
         if let live = scene.live {
             drawCrosshair(live, scene: scene, ctx: ctx, labelNear: live.point, isLive: true)
+        }
+        if scene.showsRulers {
+            drawRulers(scene, ctx: ctx)
         }
         if let loupe = scene.loupe, let point = scene.live?.point {
             drawLoupe(loupe, at: point, scene: scene, ctx: ctx)
@@ -154,7 +238,7 @@ enum OverlayRenderer {
         drawPill(text, at: origin, font: labelFont, scene: scene)
     }
 
-    private static func drawBox(_ rect: CGRect, scene: OverlayScene, ctx: CGContext, emphasized: Bool, showsLabel: Bool = true) {
+    private static func drawBox(_ rect: CGRect, scene: OverlayScene, ctx: CGContext, emphasized: Bool, showsLabel: Bool = true, matches: Bool = false) {
         let accent = scene.accent
         ctx.saveGState()
         ctx.setFillColor(accent.withAlphaComponent(emphasized ? 0.2 : 0.12).cgColor)
@@ -163,9 +247,17 @@ enum OverlayRenderer {
         ctx.setLineWidth(1)
         ctx.stroke(rect.insetBy(dx: 0.5, dy: 0.5))
         ctx.restoreGState()
+        if scene.showsPositions {
+            let text = "\(scene.format(rect.minX)), \(scene.format(rect.minY))"
+            let size = pillSize(text, font: smallFont)
+            var origin = CGPoint(x: rect.minX, y: rect.minY - size.height - 5)
+            if origin.y < 6 { origin.y = rect.minY + 5; origin.x += 5 }
+            drawPill(text, at: origin, font: smallFont, scene: scene, muted: true)
+        }
         guard showsLabel else { return }
 
-        let text = scene.dimensions(rect.size)
+        // Boxes that are exactly the same size as another get an = mark.
+        let text = (matches ? "= " : "") + scene.boxLabel(rect.size)
         let size = pillSize(text, font: labelFont)
         var origin = CGPoint(x: rect.midX - size.width / 2, y: rect.maxY + 6)
         if origin.y + size.height > scene.size.height - 6 {
@@ -176,7 +268,7 @@ enum OverlayRenderer {
         drawPill(text, at: origin, font: labelFont, scene: scene)
     }
 
-    private static func drawGap(_ gap: Gap, scene: OverlayScene, ctx: CGContext) {
+    private static func drawGap(_ gap: Gap, scene: OverlayScene, ctx: CGContext, labeled: Bool = true) {
         guard gap.length >= 1 / scene.scale else { return }
         let cap: CGFloat = 3.5
         ctx.saveGState()
@@ -195,6 +287,7 @@ enum OverlayRenderer {
         }
         ctx.strokePath()
         ctx.restoreGState()
+        guard labeled else { return }
 
         let text = scene.format(gap.length)
         let size = pillSize(text, font: smallFont)
@@ -228,7 +321,7 @@ enum OverlayRenderer {
             let text = scene.format(guide.position)
             let size = pillSize(text, font: smallFont)
             let origin = guide.axis == .horizontal
-                ? CGPoint(x: 8, y: guide.position - size.height - 4)
+                ? CGPoint(x: scene.showsRulers ? 28 : 8, y: guide.position - size.height - 4)
                 : CGPoint(x: guide.position + 5, y: 34)
             drawPill(text, at: origin, font: smallFont, scene: scene, muted: true)
         }
@@ -271,7 +364,7 @@ enum OverlayRenderer {
 
     private static func drawLoupe(_ loupe: Loupe, at point: CGPoint, scene: OverlayScene, ctx: CGContext) {
         let diameter: CGFloat = 124
-        let cells = 15
+        let cells = loupe.cells
         let cell = diameter / CGFloat(cells)
 
         var rect = CGRect(x: point.x + 22, y: point.y - 22 - diameter, width: diameter, height: diameter)
@@ -308,7 +401,7 @@ enum OverlayRenderer {
             ctx.restoreGState()
         }
         // Pixel grid.
-        ctx.setStrokeColor(NSColor.black.withAlphaComponent(0.1).cgColor)
+        ctx.setStrokeColor(NSColor.black.withAlphaComponent(cells > 20 ? 0.06 : 0.1).cgColor)
         ctx.setLineWidth(0.5)
         for i in 1..<cells {
             let offset = CGFloat(i) * cell
@@ -332,9 +425,213 @@ enum OverlayRenderer {
         ctx.setLineWidth(2)
         ctx.strokeEllipse(in: rect.insetBy(dx: 1, dy: 1))
 
-        let text = loupe.hex
+        let text = loupe.label
         let size = pillSize(text, font: smallFont)
         drawPill(text, at: CGPoint(x: rect.midX - size.width / 2, y: rect.maxY + 6), font: smallFont, scene: scene, muted: true)
+
+        if let reference = loupe.reference {
+            let ratio = PixelBuffer.contrastRatio(reference, loupe.color)
+            // Above the loupe, clear of the crosshair's label below it.
+            drawContrast(ratio, colors: (reference, loupe.color), centeredAt: rect.midX, top: rect.minY - 6 - size.height, ctx: ctx)
+        }
+    }
+
+    /// Two swatches and the WCAG ratio between them: "4.6:1  AA".
+    private static func drawContrast(_ ratio: Double, colors: (UInt32, UInt32), centeredAt midX: CGFloat, top: CGFloat, ctx: CGContext) {
+        let text = String(format: "%.1f:1  ", ratio) + OverlayScene.contrastRating(ratio)
+        let textSize = (text as NSString).size(withAttributes: [.font: smallFont])
+        let swatch: CGFloat = 11
+        let height = ceil(textSize.height) + pillPadding.height * 2
+        let width = pillPadding.width + swatch * 2 + 2 + 6 + ceil(textSize.width) + pillPadding.width
+        let rect = CGRect(x: (midX - width / 2).rounded(), y: top.rounded(), width: width, height: height)
+
+        ctx.saveGState()
+        ctx.setShadow(offset: CGSize(width: 0, height: 1.5), blur: 5, color: NSColor.black.withAlphaComponent(0.3).cgColor)
+        ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 5.5, cornerHeight: 5.5, transform: nil))
+        ctx.setFillColor(NSColor(white: 0.08, alpha: 0.86).cgColor)
+        ctx.fillPath()
+        ctx.restoreGState()
+
+        for (index, color) in [colors.0, colors.1].enumerated() {
+            let box = CGRect(x: rect.minX + pillPadding.width + CGFloat(index) * (swatch + 2), y: rect.midY - swatch / 2, width: swatch, height: swatch)
+            let path = CGPath(roundedRect: box, cornerWidth: 2.5, cornerHeight: 2.5, transform: nil)
+            ctx.addPath(path)
+            ctx.setFillColor(NSColor(color: color).cgColor)
+            ctx.fillPath()
+            ctx.addPath(path)
+            ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.35).cgColor)
+            ctx.setLineWidth(0.75)
+            ctx.strokePath()
+        }
+        let passes = ratio >= 4.5
+        (text as NSString).draw(
+            at: CGPoint(x: rect.minX + pillPadding.width + swatch * 2 + 2 + 6, y: rect.minY + pillPadding.height),
+            withAttributes: [.font: smallFont, .foregroundColor: passes ? NSColor.white : NSColor(srgbRed: 1, green: 0.62, blue: 0.55, alpha: 1)]
+        )
+    }
+
+    private static func drawGrid(_ size: CGFloat, origin: CGPoint, scene: OverlayScene, ctx: CGContext) {
+        guard size >= 2 else { return }
+        ctx.saveGState()
+        ctx.setLineWidth(1 / scene.scale)
+        // Every eighth line is stronger, like a column grid.
+        for strong in [false, true] {
+            ctx.setStrokeColor(scene.accent.withAlphaComponent(strong ? 0.32 : 0.14).cgColor)
+            let firstX = Int(((0 - origin.x) / size).rounded(.down)), lastX = Int(((scene.size.width - origin.x) / size).rounded(.up))
+            for i in firstX...lastX where (i % 8 == 0) == strong {
+                let x = crisp(origin.x + CGFloat(i) * size, scale: scene.scale)
+                ctx.move(to: CGPoint(x: x, y: 0)); ctx.addLine(to: CGPoint(x: x, y: scene.size.height))
+            }
+            let firstY = Int(((0 - origin.y) / size).rounded(.down)), lastY = Int(((scene.size.height - origin.y) / size).rounded(.up))
+            for i in firstY...lastY where (i % 8 == 0) == strong {
+                let y = crisp(origin.y + CGFloat(i) * size, scale: scene.scale)
+                ctx.move(to: CGPoint(x: 0, y: y)); ctx.addLine(to: CGPoint(x: scene.size.width, y: y))
+            }
+            ctx.strokePath()
+        }
+        ctx.restoreGState()
+    }
+
+    private static func drawLine(_ line: RulerLine, scene: OverlayScene, ctx: CGContext) {
+        guard line.length > 0 else { return }
+        ctx.saveGState()
+        ctx.setShadow(offset: .zero, blur: 2, color: NSColor.black.withAlphaComponent(0.35).cgColor)
+        ctx.setStrokeColor(scene.accent.cgColor)
+        ctx.setLineWidth(1.25)
+        ctx.move(to: line.from); ctx.addLine(to: line.to)
+        ctx.strokePath()
+        ctx.setFillColor(scene.accent.cgColor)
+        for end in [line.from, line.to] {
+            ctx.fillEllipse(in: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6))
+        }
+        ctx.restoreGState()
+
+        let text = "\(scene.format(line.length))  \(line.angle)°"
+        let size = pillSize(text, font: labelFont)
+        let mid = CGPoint(x: (line.from.x + line.to.x) / 2, y: (line.from.y + line.to.y) / 2)
+        // Beside the line rather than on it: offset along its normal.
+        let dx = (line.to.x - line.from.x) / line.length, dy = (line.to.y - line.from.y) / line.length
+        var normal = CGPoint(x: dy, y: -dx)
+        if normal.y > 0 { normal = CGPoint(x: -normal.x, y: -normal.y) }
+        let reach = abs(normal.x) * size.width / 2 + abs(normal.y) * size.height / 2 + 6
+        let center = CGPoint(x: mid.x + normal.x * reach, y: mid.y + normal.y * reach)
+        drawPill(text, at: CGPoint(x: center.x - size.width / 2, y: center.y - size.height / 2), font: labelFont, scene: scene)
+    }
+
+    private static func drawPadding(_ padding: Padding, scene: OverlayScene, ctx: CGContext) {
+        let box = padding.box, content = padding.content
+        ctx.saveGState()
+        ctx.setStrokeColor(scene.accent.cgColor)
+        ctx.setLineWidth(1)
+        ctx.stroke(box.insetBy(dx: 0.5, dy: 0.5))
+        ctx.setFillColor(scene.accent.withAlphaComponent(0.16).cgColor)
+        ctx.fill(content)
+        ctx.setLineDash(phase: 0, lengths: [3, 2])
+        ctx.stroke(content.insetBy(dx: 0.5, dy: 0.5))
+        ctx.restoreGState()
+        let left = Gap(from: CGPoint(x: box.minX, y: content.midY), to: CGPoint(x: content.minX, y: content.midY))
+        let right = Gap(from: CGPoint(x: content.maxX, y: content.midY), to: CGPoint(x: box.maxX, y: content.midY))
+        let top = Gap(from: CGPoint(x: content.midX, y: box.minY), to: CGPoint(x: content.midX, y: content.minY))
+        let bottom = Gap(from: CGPoint(x: content.midX, y: content.maxY), to: CGPoint(x: content.midX, y: box.maxY))
+        for gap in [left, right, top, bottom] {
+            drawGap(gap, scene: scene, ctx: ctx, labeled: false)
+        }
+        // Labels sit outside the box, so they stay readable on small buttons.
+        func label(_ gap: Gap, _ place: (CGSize) -> CGPoint) {
+            let text = scene.format(gap.length)
+            drawPill(text, at: place(pillSize(text, font: smallFont)), font: smallFont, scene: scene)
+        }
+        label(left) { CGPoint(x: box.minX - 6 - $0.width, y: content.midY - $0.height / 2) }
+        label(right) { CGPoint(x: box.maxX + 6, y: content.midY - $0.height / 2) }
+        label(top) { CGPoint(x: content.midX - $0.width / 2, y: box.minY - 6 - $0.height) }
+        label(bottom) { CGPoint(x: content.midX - $0.width / 2, y: box.maxY + 6) }
+    }
+
+    static let rulerThickness: CGFloat = 20
+
+    /// Rulers along the top and left edges, with the pointer and every box marked on them.
+    private static func drawRulers(_ scene: OverlayScene, ctx: CGContext) {
+        let t = rulerThickness
+        let unitScale = scene.unit == .pixels ? scene.scale : 1
+        let band = NSColor(white: 0.09, alpha: 0.86)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 8.5, weight: .medium)
+        let labelAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.65)]
+
+        ctx.saveGState()
+        ctx.setFillColor(band.cgColor)
+        ctx.fill(CGRect(x: 0, y: 0, width: scene.size.width, height: t))
+        ctx.fill(CGRect(x: 0, y: t, width: t, height: scene.size.height - t))
+
+        // Boxes, projected onto each ruler.
+        ctx.setFillColor(scene.accent.withAlphaComponent(0.4).cgColor)
+        for box in scene.boxes {
+            ctx.fill(CGRect(x: max(box.minX, t), y: 0, width: box.maxX - max(box.minX, t), height: t))
+            ctx.fill(CGRect(x: 0, y: max(box.minY, t), width: t, height: box.maxY - max(box.minY, t)))
+        }
+
+        // Ticks every 10 units, longer every 50, labeled every 100.
+        ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.4).cgColor)
+        ctx.setLineWidth(1 / scene.scale)
+        for axis in 0..<2 {
+            let length = axis == 0 ? scene.size.width : scene.size.height
+            var value = 0
+            while CGFloat(value) / unitScale <= length {
+                let p = crisp(CGFloat(value) / unitScale, scale: scene.scale)
+                let tick: CGFloat = value % 100 == 0 ? t : value % 50 == 0 ? 8 : 4
+                if p >= t {
+                    if axis == 0 {
+                        ctx.move(to: CGPoint(x: p, y: t - tick)); ctx.addLine(to: CGPoint(x: p, y: t))
+                    } else {
+                        ctx.move(to: CGPoint(x: t - tick, y: p)); ctx.addLine(to: CGPoint(x: t, y: p))
+                    }
+                }
+                value += 10
+            }
+        }
+        ctx.strokePath()
+        ctx.restoreGState()
+
+        for axis in 0..<2 {
+            let length = axis == 0 ? scene.size.width : scene.size.height
+            var value = 100
+            while CGFloat(value) / unitScale < length - 20 {
+                let p = CGFloat(value) / unitScale
+                let text = "\(value)" as NSString
+                if axis == 0 {
+                    text.draw(at: CGPoint(x: p + 3, y: 2), withAttributes: labelAttributes)
+                } else {
+                    ctx.saveGState()
+                    ctx.translateBy(x: 2, y: p - 3)
+                    ctx.rotate(by: -.pi / 2)
+                    text.draw(at: .zero, withAttributes: labelAttributes)
+                    ctx.restoreGState()
+                }
+                value += 100
+            }
+        }
+
+        // The pointer's position on each ruler.
+        if let pointer = scene.pointer {
+            ctx.saveGState()
+            ctx.setStrokeColor(scene.accent.cgColor)
+            ctx.setLineWidth(1)
+            let x = crisp(pointer.x, scale: scene.scale), y = crisp(pointer.y, scale: scene.scale)
+            ctx.move(to: CGPoint(x: x, y: 0)); ctx.addLine(to: CGPoint(x: x, y: t))
+            ctx.move(to: CGPoint(x: 0, y: y)); ctx.addLine(to: CGPoint(x: t, y: y))
+            ctx.strokePath()
+            ctx.restoreGState()
+
+            let xText = scene.format(pointer.x)
+            let xSize = pillSize(xText, font: smallFont)
+            drawPill(xText, at: CGPoint(x: min(max(x - xSize.width / 2, t + 2), scene.size.width - xSize.width - 2), y: t + 3), font: smallFont, scene: scene)
+            let yText = scene.format(pointer.y)
+            let ySize = pillSize(yText, font: smallFont)
+            drawPill(yText, at: CGPoint(x: t + 3, y: min(max(y - ySize.height / 2, t + 2), scene.size.height - ySize.height - 2)), font: smallFont, scene: scene)
+        }
+
+        // Corner square.
+        ctx.setFillColor(band.cgColor)
+        ctx.fill(CGRect(x: 0, y: 0, width: t, height: t))
     }
 
     // MARK: - Labels
@@ -369,6 +666,11 @@ enum OverlayRenderer {
 }
 
 extension NSColor {
+    /// From packed 0x__RRGGBB.
+    convenience init(color: UInt32) {
+        self.init(srgbRed: CGFloat((color >> 16) & 0xFF) / 255, green: CGFloat((color >> 8) & 0xFF) / 255, blue: CGFloat(color & 0xFF) / 255, alpha: 1)
+    }
+
     /// Bright colors (lime, cyan) read better with dark text.
     var prefersDarkText: Bool {
         guard let rgb = usingColorSpace(.sRGB) else { return false }

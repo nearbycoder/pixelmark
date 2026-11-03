@@ -8,6 +8,8 @@ import UniformTypeIdentifiers
 final class MeasureSession {
     let hud = HUDModel()
     var lastMeasured: CGSize?
+    /// The color picked with K; the loupe shows the contrast against it.
+    var contrastReference: UInt32?
     var onEnd: (() -> Void)?
 
     private var windows: [OverlayWindow] = []
@@ -118,8 +120,11 @@ final class MeasureSession {
 
         if flags.contains(.command) {
             switch key {
+            case "c" where flags.contains(.option): copyAll()
             case "c": copyDimensions(from: overlay)
             case "s": saveScreenshot(of: overlay, cropped: flags.contains(.shift))
+            case "z" where flags.contains(.shift):
+                if !overlay.restoreRemoved() { NSSound.beep() }
             case "z": overlay.removeHoveredOrLast()
             case "w", "q", ".": end()
             case ",": end(); AppCoordinator.shared?.showSettings()
@@ -128,14 +133,48 @@ final class MeasureSession {
             return true
         }
 
+        let shift = flags.contains(.shift)
         switch key {
-        case "h": overlay.addGuide(.horizontal)
-        case "v": overlay.addGuide(.vertical)
+        case "h": shift ? overlay.addCenterGuide(.horizontal) : overlay.addGuide(.horizontal)
+        case "v": shift ? overlay.addCenterGuide(.vertical) : overlay.addGuide(.vertical)
+        case "c" where shift:
+            settings.colorFormat = settings.colorFormat.next
+            let sample = overlay.colorUnderCursor.map(settings.colorFormat.format) ?? settings.colorFormat.title
+            hud.showToast("Colors copy as \(sample)", symbol: "eyedropper.halffull")
         case "c": copyColor(from: overlay)
-        case "x": overlay.clearAll()
+        case "x":
+            overlay.clearAll()
+            contrastReference = nil
         case "l":
             settings.showLoupe.toggle()
             hud.showToast(settings.showLoupe ? "Loupe on" : "Loupe off", symbol: "magnifyingglass")
+        case "z":
+            settings.loupeZoom = (settings.loupeZoom + 1) % AppSettings.loupeZooms.count
+            settings.showLoupe = true
+            hud.showToast("Loupe shows \(settings.loupeCells) × \(settings.loupeCells) pixels", symbol: "plus.magnifyingglass")
+        case "r":
+            settings.showRulers.toggle()
+            hud.showToast(settings.showRulers ? "Rulers on" : "Rulers off", symbol: "ruler")
+        case "g":
+            let grid = overlay.toggleGrid()
+            let from = grid.anchored ? " from the box" : ""
+            hud.showToast(grid.shown ? "\(settings.gridSize) pt grid\(from)" : "Grid off", symbol: "grid")
+        case "a":
+            settings.showAspectRatio.toggle()
+            hud.showToast(settings.showAspectRatio ? "Aspect ratios on" : "Aspect ratios off", symbol: "aspectratio")
+        case "p":
+            settings.showPositions.toggle()
+            hud.showToast(settings.showPositions ? "Positions on" : "Positions off", symbol: "location")
+        case "k" where shift:
+            contrastReference = nil
+            hud.showToast("Contrast check off", symbol: "circle.lefthalf.filled")
+        case "k":
+            guard let color = overlay.colorUnderCursor else { return true }
+            contrastReference = color
+            hud.showToast("Checking contrast against \(PixelBuffer.hex(color))", symbol: "circle.lefthalf.filled")
+        case "m":
+            settings.markColor = settings.markColor.next
+            hud.showToast("Marks in \(settings.markColor.title.lowercased())", symbol: "paintpalette")
         case "u":
             toggleUnit()
         case "[", "-": adjustTolerance(-(flags.contains(.shift) ? 8 : 2))
@@ -186,9 +225,21 @@ final class MeasureSession {
     }
 
     private func copyColor(from overlay: OverlayView) {
-        guard let hex = overlay.colorUnderCursor else { return }
-        Self.copy(hex)
-        hud.showToast("Copied \(hex)", symbol: "eyedropper.halffull")
+        guard let color = overlay.colorUnderCursor else { return }
+        let text = settings.colorFormat.format(color)
+        Self.copy(text)
+        hud.showToast("Copied \(text)", symbol: "eyedropper.halffull")
+    }
+
+    /// Every measurement on every screen, one per line.
+    private func copyAll() {
+        let list = overlays.flatMap { $0.measurementList() }
+        guard !list.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        Self.copy(list.joined(separator: "\n"))
+        hud.showToast("Copied \(list.count) measurement\(list.count == 1 ? "" : "s")", symbol: "list.bullet.clipboard")
     }
 
     private func saveScreenshot(of overlay: OverlayView, cropped: Bool) {

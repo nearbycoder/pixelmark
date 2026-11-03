@@ -134,6 +134,7 @@
     .head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
     h2 { font-size: clamp(30px, 4vw, 40px); letter-spacing: -0.025em; line-height: 1.12; font-weight: 600; margin: 0 0 12px; text-wrap: balance; }
     .head p { color: var(--muted); margin: 0; font-size: 18px; text-wrap: pretty; }
+    .head p.eyebrow { color: var(--mark); font-size: 14px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 10px; }
 
     .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 24px; }
@@ -211,6 +212,7 @@
       <a class="brand" href="#"><img src="assets/icon-256.png" alt="">PixelMark</a>
       <nav>
         <a href="#tour">Tour</a>
+        <a href="#new">What's new</a>
         <a href="#features">Features</a>
         <a href="#shortcuts">Shortcuts</a>
         <a href="#faq">FAQ</a>
@@ -238,24 +240,54 @@
     <div class="tour" id="tour">
       <div class="wall">
         <div class="frame">
-          <video id="video" src="assets/demo.mp4" poster="assets/demo-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A one-minute tour of every PixelMark feature"></video>
+          <video src="assets/demo.mp4" poster="assets/demo-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A one-minute tour of every PixelMark feature"></video>
         </div>
       </div>
-      <ul class="chapters" id="chapters">
-        <li><button type="button" data-t="3.8">Hover <time>0:03</time></button></li>
-        <li><button type="button" data-t="10.9">Color <time>0:10</time></button></li>
-        <li><button type="button" data-t="13.8">Boxes <time>0:13</time></button></li>
-        <li><button type="button" data-t="20.2">Copy size <time>0:20</time></button></li>
-        <li><button type="button" data-t="23.2">Pin <time>0:23</time></button></li>
-        <li><button type="button" data-t="27.9">Tolerance <time>0:27</time></button></li>
-        <li><button type="button" data-t="30.7">Spacing <time>0:30</time></button></li>
-        <li><button type="button" data-t="39.5">Guides <time>0:39</time></button></li>
-        <li><button type="button" data-t="44.5">Units <time>0:44</time></button></li>
-        <li><button type="button" data-t="48.3">Nudge <time>0:48</time></button></li>
-        <li><button type="button" data-t="50.3">Screenshot <time>0:50</time></button></li>
-        <li><button type="button" data-t="54.6">Shortcuts <time>0:54</time></button></li>
+      <ul class="chapters">
+        <li><button type="button" data-t="3.8">Hover <time>0:04</time></button></li>
+        <li><button type="button" data-t="11.0">Color <time>0:11</time></button></li>
+        <li><button type="button" data-t="13.9">Boxes <time>0:14</time></button></li>
+        <li><button type="button" data-t="20.3">Copy size <time>0:20</time></button></li>
+        <li><button type="button" data-t="24.3">Pin <time>0:24</time></button></li>
+        <li><button type="button" data-t="29.0">Tolerance <time>0:29</time></button></li>
+        <li><button type="button" data-t="31.8">Spacing <time>0:32</time></button></li>
+        <li><button type="button" data-t="40.6">Guides <time>0:40</time></button></li>
+        <li><button type="button" data-t="45.6">Units <time>0:45</time></button></li>
+        <li><button type="button" data-t="49.4">Nudge <time>0:49</time></button></li>
+        <li><button type="button" data-t="51.5">Screenshot <time>0:51</time></button></li>
+        <li><button type="button" data-t="55.9">Shortcuts <time>0:56</time></button></li>
       </ul>
     </div>
+
+    <section id="new" class="tour">
+      <div class="head">
+        <p class="eyebrow">New in 1.2</p>
+        <h2>Fourteen new ways to check a layout</h2>
+        <p>Rulers, a layout grid, padding, point-to-point lines, a contrast checker and more. Every one is a single key away.</p>
+      </div>
+      <div class="wall">
+        <div class="frame">
+          <video src="assets/whats-new.mp4" poster="assets/whats-new-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A one-minute tour of what's new in PixelMark 1.2"></video>
+        </div>
+      </div>
+      <ul class="chapters">
+        <li><button type="button" data-t="3.2">Rulers <time>0:03</time></button></li>
+        <li><button type="button" data-t="6.0">Positions <time>0:06</time></button></li>
+        <li><button type="button" data-t="9.2">Padding <time>0:09</time></button></li>
+        <li><button type="button" data-t="13.5">Aspect ratios <time>0:13</time></button></li>
+        <li><button type="button" data-t="16.6">Same size <time>0:16</time></button></li>
+        <li><button type="button" data-t="21.2">Copy all <time>0:21</time></button></li>
+        <li><button type="button" data-t="23.1">Undo and redo <time>0:23</time></button></li>
+        <li><button type="button" data-t="26.3">Lines <time>0:26</time></button></li>
+        <li><button type="button" data-t="31.9">Center guides <time>0:32</time></button></li>
+        <li><button type="button" data-t="37.0">Grid <time>0:37</time></button></li>
+        <li><button type="button" data-t="40.2">Loupe zoom <time>0:40</time></button></li>
+        <li><button type="button" data-t="44.7">Contrast <time>0:45</time></button></li>
+        <li><button type="button" data-t="51.0">Color formats <time>0:51</time></button></li>
+        <li><button type="button" data-t="55.7">Mark color <time>0:56</time></button></li>
+        <li><button type="button" data-t="60.9">Shortcuts <time>1:01</time></button></li>
+      </ul>
+    </section>
 
     <section id="try">
       <div class="head">
@@ -312,27 +344,27 @@
         <div class="feature violet">
           <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg></div>
           <h3>Boxes that snap</h3>
-          <p>Drag around an element and the box shrinks to fit its content. Hold <kbd>⇧</kbd> for a free box.</p>
+          <p>Drag around an element and the box shrinks to fit its content. Turn on aspect ratios (<kbd>A</kbd>) and positions (<kbd>P</kbd>); boxes of the same size get an = mark.</p>
         </div>
         <div class="feature sky">
           <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="6" height="10" rx="1.5"/><rect x="15" y="7" width="6" height="10" rx="1.5"/><path d="M10 12h4M10 10.5v3M14 10.5v3"/></svg></div>
-          <h3>Spacing</h3>
-          <p>Hold <kbd>⌥</kbd> over a box to see the gaps to its neighbors. Boxes that line up get alignment lines.</p>
+          <h3>Spacing and padding</h3>
+          <p>Hold <kbd>⌥</kbd> over a box to see the gaps to its neighbors, or <kbd>⌃</kbd> to see the padding around what's inside it.</p>
         </div>
         <div class="feature teal">
           <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 8h18M3 16h18" stroke-dasharray="3 2.5"/><path d="M8 3v18" stroke-dasharray="3 2.5"/></svg></div>
           <h3>Guides</h3>
-          <p>Press <kbd>H</kbd> or <kbd>V</kbd> to drop a guide. Neighboring guides show the distance between them.</p>
+          <p>Press <kbd>H</kbd> or <kbd>V</kbd> to drop a guide, or add <kbd>⇧</kbd> to put it through the middle of a box. Neighboring guides show the distance between them.</p>
         </div>
         <div class="feature amber">
           <div class="ico"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M8 10.5h5M10.5 8v5"/></svg></div>
           <h3>Loupe and colors</h3>
-          <p>See the pixels under the pointer up close, and press <kbd>C</kbd> to copy their hex value.</p>
+          <p>See the pixels under the pointer up close, and zoom with <kbd>Z</kbd>. <kbd>C</kbd> copies a color as hex, RGB, HSL or SwiftUI.</p>
         </div>
         <div class="feature slate">
           <div class="ico"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></div>
           <h3>Copy and save</h3>
-          <p><kbd>⌘C</kbd> copies a size as <code>320 × 48</code>, CSS or SwiftUI. <kbd>⌘S</kbd> saves a screenshot with your marks.</p>
+          <p><kbd>⌘C</kbd> copies a size as <code>320 × 48</code>, CSS or SwiftUI, and <kbd>⌥⌘C</kbd> copies every measurement. <kbd>⌘S</kbd> saves a screenshot with your marks.</p>
         </div>
         <div class="feature teal">
           <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><path d="M8 5v4M14 10v4M10 15v4"/></svg></div>
@@ -343,6 +375,21 @@
           <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 18c3-8 5-12 8-12s5 4 8 12"/><path d="M4 21h16"/></svg></div>
           <h3>Adjustable tolerance</h3>
           <p>Ignore shadows and anti-aliasing, or stop at a faint 1&nbsp;px border. Press <kbd>[</kbd> and <kbd>]</kbd> while measuring.</p>
+        </div>
+        <div class="feature amber">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H7v14H3z"/><path d="M11 3v2M15 3v2M19 3v2M3 11h2M3 15h2M3 19h2"/></svg></div>
+          <h3>Rulers and grid</h3>
+          <p><kbd>R</kbd> adds rulers along the screen edges. <kbd>G</kbd> lays an 8&nbsp;pt grid over the screen, starting at the box under the pointer.</p>
+        </div>
+        <div class="feature violet">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M5 18 19 6"/><circle cx="5" cy="18" r="1.6"/><circle cx="19" cy="6" r="1.6"/><path d="M14 18h6M17 15v6" opacity=".55"/></svg></div>
+          <h3>Point to point</h3>
+          <p>Hold <kbd>⌘</kbd> and drag to measure the straight-line distance and angle between any two points.</p>
+        </div>
+        <div class="feature slate">
+          <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor" stroke="none"/></svg></div>
+          <h3>Contrast</h3>
+          <p>Press <kbd>K</kbd> on one color, then point at another to see their WCAG contrast ratio and rating.</p>
         </div>
         <div class="feature sky">
           <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></div>
@@ -362,16 +409,28 @@
           <tr><td><kbd>⇧⌘2</kbd></td><td>Start measuring, from any app</td></tr>
           <tr><td><kbd>Drag</kbd></td><td>Box that snaps to its content</td></tr>
           <tr><td><kbd>⇧</kbd> <kbd>Drag</kbd></td><td>Free box</td></tr>
+          <tr><td><kbd>⌘</kbd> <kbd>Drag</kbd></td><td>Line between two points</td></tr>
           <tr><td><kbd>Click</kbd> <kbd>Space</kbd></td><td>Pin the current measurement</td></tr>
           <tr><td><kbd>⌥</kbd></td><td>Spacing around the hovered box</td></tr>
-          <tr><td><kbd>H</kbd> <kbd>V</kbd></td><td>Horizontal or vertical guide</td></tr>
+          <tr><td><kbd>⌃</kbd></td><td>Padding inside the hovered box</td></tr>
+          <tr><td><kbd>H</kbd> <kbd>V</kbd></td><td>Horizontal or vertical guide (⇧ through a box's center)</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Move the pointer 1 px (⇧ for 10)</td></tr>
+          <tr><td><kbd>R</kbd> <kbd>G</kbd></td><td>Rulers, layout grid</td></tr>
+          <tr><td><kbd>A</kbd> <kbd>P</kbd></td><td>Aspect ratios, positions</td></tr>
+          <tr><td><kbd>Z</kbd> <kbd>L</kbd></td><td>Loupe zoom, show or hide the loupe</td></tr>
         </table>
         <table>
           <tr><td><kbd>⌘C</kbd></td><td>Copy dimensions</td></tr>
-          <tr><td><kbd>C</kbd></td><td>Copy the color under the pointer</td></tr>
+          <tr><td><kbd>⌥⌘C</kbd></td><td>Copy every measurement</td></tr>
+          <tr><td><kbd>C</kbd> <kbd>⇧C</kbd></td><td>Copy the color under the pointer, change its format</td></tr>
+          <tr><td><kbd>K</kbd></td><td>Check contrast against this color</td></tr>
           <tr><td><kbd>⌘S</kbd> <kbd>⇧⌘S</kbd></td><td>Screenshot, or just the measured area</td></tr>
+          <tr><td><kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd></td><td>Undo, redo</td></tr>
+          <tr><td><kbd>X</kbd></td><td>Clear everything</td></tr>
           <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Edge tolerance</td></tr>
-          <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Move the pointer 1 px (⇧ for 10)</td></tr>
+          <tr><td><kbd>U</kbd></td><td>Points or pixels</td></tr>
+          <tr><td><kbd>M</kbd></td><td>Mark color</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Every shortcut</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Done</td></tr>
         </table>
       </div>
@@ -392,7 +451,7 @@
         </details>
         <details>
           <summary>How does it compare to PixelSnap?</summary>
-          <p>PixelSnap inspired it and is a great app. PixelMark covers the same core workflow (edge measuring, snapping boxes, spacing, guides and screenshots), adds a loupe with color copying and CSS or SwiftUI copy formats, and is free to use and modify.</p>
+          <p>PixelSnap inspired it and is a great app. PixelMark covers the same core workflow (edge measuring, snapping boxes, spacing, guides, rulers and screenshots), adds padding, point-to-point lines, a contrast checker, a zoomable loupe and CSS or SwiftUI copy formats, and is free to use and modify.</p>
         </details>
         <details>
           <summary>Which Macs does it support?</summary>
@@ -424,24 +483,29 @@
 
   <script>
   (() => {
-    // Tour video: play while visible (unless reduced motion), and jump between chapters.
-    const video = document.getElementById('video');
-    const chapters = [...document.querySelectorAll('#chapters button')];
+    // Videos: play while visible (unless reduced motion), and jump between chapters.
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !calm && !video.dataset.paused) video.play().catch(() => {});
-      else if (!entry.isIntersecting) video.pause();
-    }, { threshold: 0.35 }).observe(video);
-    video.addEventListener('pause', () => { if (document.visibilityState === 'visible' && video.getBoundingClientRect().top < innerHeight) video.dataset.paused = '1'; });
-    video.addEventListener('play', () => { delete video.dataset.paused; });
-    chapters.forEach(button => button.addEventListener('click', () => {
-      video.currentTime = Number(button.dataset.t);
-      video.play().catch(() => {});
-    }));
-    video.addEventListener('timeupdate', () => {
-      let current = null;
-      chapters.forEach(button => { if (Number(button.dataset.t) <= video.currentTime + 0.05) current = button; });
-      chapters.forEach(button => button.classList.toggle('on', button === current));
+    document.querySelectorAll('.tour').forEach(tour => {
+      const video = tour.querySelector('video');
+      const chapters = [...tour.querySelectorAll('.chapters button')];
+      new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting && !calm && !video.dataset.paused) video.play().catch(() => {});
+        else if (!entry.isIntersecting) video.pause();
+      }, { threshold: 0.35 }).observe(video);
+      video.addEventListener('pause', () => {
+        const box = video.getBoundingClientRect();
+        if (document.visibilityState === 'visible' && box.top < innerHeight && box.bottom > 0) video.dataset.paused = '1';
+      });
+      video.addEventListener('play', () => { delete video.dataset.paused; });
+      chapters.forEach(button => button.addEventListener('click', () => {
+        video.currentTime = Number(button.dataset.t);
+        video.play().catch(() => {});
+      }));
+      video.addEventListener('timeupdate', () => {
+        let current = null;
+        chapters.forEach(button => { if (Number(button.dataset.t) <= video.currentTime + 0.05) current = button; });
+        chapters.forEach(button => button.classList.toggle('on', button === current));
+      });
     });
 
     // Live demo: the same idea as the app, using element boxes instead of pixels.

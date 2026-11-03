@@ -36,6 +36,60 @@ enum CopyFormat: String, CaseIterable, Identifiable {
     var example: String { format(width: "320", height: "48").replacingOccurrences(of: "\n", with: " ") }
 }
 
+/// How C copies a color.
+enum ColorFormat: String, CaseIterable, Identifiable {
+    case hex, rgb, hsl, swiftUI
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .hex: "Hex"
+        case .rgb: "RGB"
+        case .hsl: "HSL"
+        case .swiftUI: "SwiftUI"
+        }
+    }
+
+    /// `color` is packed 0x__RRGGBB.
+    func format(_ color: UInt32) -> String {
+        let r = Int((color >> 16) & 0xFF), g = Int((color >> 8) & 0xFF), b = Int(color & 0xFF)
+        switch self {
+        case .hex:
+            return String(format: "#%02X%02X%02X", r, g, b)
+        case .rgb:
+            return "rgb(\(r), \(g), \(b))"
+        case .hsl:
+            let (h, s, l) = Self.hsl(r: r, g: g, b: b)
+            return "hsl(\(h), \(s)%, \(l)%)"
+        case .swiftUI:
+            return String(format: "Color(red: %.3f, green: %.3f, blue: %.3f)", Double(r) / 255, Double(g) / 255, Double(b) / 255)
+        }
+    }
+
+    var next: ColorFormat {
+        let all = Self.allCases
+        return all[(all.firstIndex(of: self)! + 1) % all.count]
+    }
+
+    /// Hue in degrees, saturation and lightness in percent, each rounded.
+    static func hsl(r: Int, g: Int, b: Int) -> (Int, Int, Int) {
+        let rf = Double(r) / 255, gf = Double(g) / 255, bf = Double(b) / 255
+        let hi = max(rf, gf, bf), lo = min(rf, gf, bf)
+        let l = (hi + lo) / 2
+        guard hi != lo else { return (0, 0, Int((l * 100).rounded())) }
+        let d = hi - lo
+        let s = l > 0.5 ? d / (2 - hi - lo) : d / (hi + lo)
+        var h: Double
+        switch hi {
+        case rf: h = (gf - bf) / d + (gf < bf ? 6 : 0)
+        case gf: h = (bf - rf) / d + 2
+        default: h = (rf - gf) / d + 4
+        }
+        h *= 60
+        return (Int(h.rounded()) % 360, Int((s * 100).rounded()), Int((l * 100).rounded()))
+    }
+}
+
 /// The color used for lines and labels in the measuring overlay.
 enum MarkColor: String, CaseIterable, Identifiable {
     case pink, orange, lime, cyan, blue, violet
@@ -53,6 +107,12 @@ enum MarkColor: String, CaseIterable, Identifiable {
     }
 
     var color: Color { Color(nsColor: nsColor) }
+    var title: String { rawValue.capitalized }
+
+    var next: MarkColor {
+        let all = Self.allCases
+        return all[(all.firstIndex(of: self)! + 1) % all.count]
+    }
 }
 
 @MainActor
@@ -72,6 +132,12 @@ final class AppSettings: ObservableObject {
         static let saveFolder = "saveFolder"
         static let measureShortcut = "measureShortcut"
         static let hasOnboarded = "hasOnboarded"
+        static let colorFormat = "colorFormat"
+        static let showRulers = "showRulers"
+        static let showAspectRatio = "showAspectRatio"
+        static let showPositions = "showPositions"
+        static let gridSize = "gridSize"
+        static let loupeZoom = "loupeZoom"
     }
 
     /// Scripted debug runs keep their settings apart from the real ones.
@@ -89,6 +155,14 @@ final class AppSettings: ObservableObject {
     @Published var saveScreenshot: Bool { didSet { defaults.set(saveScreenshot, forKey: Key.saveScreenshot) } }
     @Published var saveFolder: URL { didSet { defaults.set(saveFolder.path, forKey: Key.saveFolder) } }
     @Published var hasOnboarded: Bool { didSet { defaults.set(hasOnboarded, forKey: Key.hasOnboarded) } }
+    @Published var colorFormat: ColorFormat { didSet { defaults.set(colorFormat.rawValue, forKey: Key.colorFormat) } }
+    @Published var showRulers: Bool { didSet { defaults.set(showRulers, forKey: Key.showRulers) } }
+    @Published var showAspectRatio: Bool { didSet { defaults.set(showAspectRatio, forKey: Key.showAspectRatio) } }
+    @Published var showPositions: Bool { didSet { defaults.set(showPositions, forKey: Key.showPositions) } }
+    /// Spacing of the layout grid (G), in points.
+    @Published var gridSize: Int { didSet { defaults.set(gridSize, forKey: Key.gridSize) } }
+    /// Index into `loupeZooms`.
+    @Published var loupeZoom: Int { didSet { defaults.set(loupeZoom, forKey: Key.loupeZoom) } }
     @Published var measureShortcut: Shortcut? {
         didSet {
             if let data = try? JSONEncoder().encode(measureShortcut) {
@@ -98,6 +172,10 @@ final class AppSettings: ObservableObject {
     }
 
     static let toleranceRange = 0...96
+    static let gridSizes = [4, 8, 10, 12, 16, 24]
+    /// How many pixels across the loupe shows, from widest to closest.
+    static let loupeZooms = [25, 15, 9]
+    var loupeCells: Int { Self.loupeZooms[min(max(loupeZoom, 0), Self.loupeZooms.count - 1)] }
 
     private init() {
         defaults.register(defaults: [
@@ -110,6 +188,9 @@ final class AppSettings: ObservableObject {
             Key.copyFormat: CopyFormat.times.rawValue,
             Key.copyScreenshot: true,
             Key.saveScreenshot: true,
+            Key.colorFormat: ColorFormat.hex.rawValue,
+            Key.gridSize: 8,
+            Key.loupeZoom: 1,
         ])
         unit = MeasureUnit(rawValue: defaults.string(forKey: Key.unit) ?? "") ?? .points
         tolerance = defaults.integer(forKey: Key.tolerance)
@@ -121,6 +202,12 @@ final class AppSettings: ObservableObject {
         copyScreenshot = defaults.bool(forKey: Key.copyScreenshot)
         saveScreenshot = defaults.bool(forKey: Key.saveScreenshot)
         hasOnboarded = defaults.bool(forKey: Key.hasOnboarded)
+        colorFormat = ColorFormat(rawValue: defaults.string(forKey: Key.colorFormat) ?? "") ?? .hex
+        showRulers = defaults.bool(forKey: Key.showRulers)
+        showAspectRatio = defaults.bool(forKey: Key.showAspectRatio)
+        showPositions = defaults.bool(forKey: Key.showPositions)
+        gridSize = defaults.integer(forKey: Key.gridSize)
+        loupeZoom = defaults.integer(forKey: Key.loupeZoom)
         saveFolder = defaults.string(forKey: Key.saveFolder).map { URL(fileURLWithPath: $0) }
             ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
         if let data = defaults.data(forKey: Key.measureShortcut),
@@ -157,6 +244,12 @@ final class AppSettings: ObservableObject {
         copyFormat = .times
         copyScreenshot = true
         saveScreenshot = true
+        colorFormat = .hex
+        showRulers = false
+        showAspectRatio = false
+        showPositions = false
+        gridSize = 8
+        loupeZoom = 1
         measureShortcut = .defaultMeasure
     }
 }

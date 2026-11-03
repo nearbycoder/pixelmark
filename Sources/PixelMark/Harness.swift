@@ -31,9 +31,9 @@ enum Harness {
             window.level = .normal
             window.orderBack(nil)
         }
-        if script.hasPrefix("video:") {
-            let video = DemoVideo(session: session, overlay: overlay)
-            video.run(to: URL(fileURLWithPath: String(script.dropFirst("video:".count))))
+        for (prefix, kind) in [("video:", DemoVideo.Script.tour), ("video-new:", .whatsNew)] where script.hasPrefix(prefix) {
+            let video = DemoVideo(session: session, overlay: overlay, script: kind)
+            video.run(to: URL(fileURLWithPath: String(script.dropFirst(prefix.count))))
             self.video = video
             return
         }
@@ -53,6 +53,19 @@ enum Harness {
                 overlay.simulateDrag(from: CGPoint(x: numbers[0], y: numbers[1]), to: CGPoint(x: numbers[2], y: numbers[3]), release: true)
             case "dragging" where numbers.count == 4:
                 overlay.simulateDrag(from: CGPoint(x: numbers[0], y: numbers[1]), to: CGPoint(x: numbers[2], y: numbers[3]), release: false)
+            case "control" where numbers.count == 2:
+                overlay.simulateMove(to: CGPoint(x: numbers[0], y: numbers[1]), flags: .control)
+            case "line" where numbers.count == 4:
+                overlay.simulateDrag(from: CGPoint(x: numbers[0], y: numbers[1]), to: CGPoint(x: numbers[2], y: numbers[3]), release: true, line: true)
+            case "key" where parts.count == 2:
+                // A key as typed while measuring; a leading ^ adds ⇧, e.g. "key ^h".
+                let shifted = parts[1].hasPrefix("^")
+                let character = shifted ? String(parts[1].dropFirst()) : parts[1]
+                if let event = NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: shifted ? .shift : [], timestamp: 0,
+                    windowNumber: 0, context: nil, characters: character, charactersIgnoringModifiers: character,
+                    isARepeat: false, keyCode: 0
+                ) { _ = session.handleKey(event) }
             case "hguide": overlay.addGuide(.horizontal)
             case "vguide": overlay.addGuide(.vertical)
             case "help": session.hud.showHelp = true

@@ -11,14 +11,23 @@ final class OverlayView: NSView {
     private var boxes: [CGRect] = []
     private var pins: [Crosshair] = []
     private var guides: [Guide] = []
+    private var lines: [RulerLine] = []
     private var history: [Mark] = []
+    /// What ⌫ and ⌘Z took away, for ⇧⌘Z.
+    private var removed: [Removed] = []
     private var dragStart: CGPoint?
     private var dragCurrent: CGPoint?
     private var isDragging = false
+    /// ⌘-drag draws a point-to-point line instead of a box.
+    private var drawsLine = false
     private var showSpacing = false
+    private var showPadding = false
     private var freeDrag = false
+    /// Where the layout grid starts, while it's shown.
+    private var gridOrigin: CGPoint?
 
-    private enum Mark { case box, pin, guide }
+    private enum Mark { case box, pin, guide, line }
+    private enum Removed { case box(CGRect), pin(Crosshair), guide(Guide), line(RulerLine) }
 
     #if DEBUG
     /// The demo video draws its own pointer, since recordings leave the real one out.
@@ -87,12 +96,40 @@ final class OverlayView: NSView {
     }
 
     private var dragRect: CGRect? {
-        guard isDragging, let start = dragStart, let current = dragCurrent else { return nil }
+        guard isDragging, !drawsLine, let start = dragStart, let current = dragCurrent else { return nil }
         // Whole pixels, so the box matches what's on screen exactly.
         let a = pixel(at: start), b = pixel(at: current)
         let minX = min(a.x, b.x), minY = min(a.y, b.y)
         let maxX = max(a.x, b.x) + 1, maxY = max(a.y, b.y) + 1
         return CGRect(x: CGFloat(minX) / scale, y: CGFloat(minY) / scale, width: CGFloat(maxX - minX) / scale, height: CGFloat(maxY - minY) / scale)
+    }
+
+    /// A ⌘-drag line between pixel centers; ⇧ keeps it to 45° steps.
+    private var dragLine: RulerLine? {
+        guard isDragging, drawsLine, let start = dragStart, let current = dragCurrent else { return nil }
+        let from = pixelCenter(pixel(at: start))
+        var to = pixelCenter(pixel(at: current))
+        if freeDrag {
+            let dx = to.x - from.x, dy = to.y - from.y
+            let step = (atan2(dy, dx) / (.pi / 4)).rounded() * (.pi / 4)
+            let length = hypot(dx, dy)
+            to = pixelCenter(pixel(at: CGPoint(x: from.x + cos(step) * length, y: from.y + sin(step) * length)))
+        }
+        return RulerLine(from: from, to: to)
+    }
+
+    /// The space between a box's edges and what's inside it, like a button's label.
+    private func padding(in box: CGRect) -> Padding? {
+        let pixels = PixelRect(
+            minX: Int((box.minX * scale).rounded()), minY: Int((box.minY * scale).rounded()),
+            maxX: Int((box.maxX * scale).rounded()), maxY: Int((box.maxY * scale).rounded())
+        )
+        let inset = max(2, Int((1.5 * scale).rounded()))
+        guard let content = buffer.innerContentBounds(in: pixels, inset: inset, tolerance: settings.tolerance) else { return nil }
+        return Padding(box: box, content: CGRect(
+            x: CGFloat(content.minX) / scale, y: CGFloat(content.minY) / scale,
+            width: CGFloat(content.width) / scale, height: CGFloat(content.height) / scale
+        ))
     }
 
     /// The drag rectangle, shrunk to the content inside it unless snapping is off (⇧ flips it).
@@ -176,20 +213,36 @@ final class OverlayView: NSView {
         scene.guides = guides
         scene.boxes = boxes
         scene.pins = pins
+        scene.lines = lines
+        scene.grid = gridOrigin.map { (CGFloat(settings.gridSize), $0) }
+        scene.showsRulers = settings.showRulers
+        scene.showsAspectRatio = settings.showAspectRatio
+        scene.showsPositions = settings.showPositions
         let hovered = hoveredBoxIndex
         scene.hoveredBox = hovered
 
-        if let rect = dragRect {
+        if let line = dragLine {
+            scene.dragLine = line
+            scene.pointer = cursor
+        } else if let rect = dragRect {
             scene.dragRaw = rect
             scene.dragSnapped = snapped(rect)
+            scene.pointer = cursor
         } else if let cursor, session?.isPointerOverHUD != true {
+            scene.pointer = forExport ? nil : cursor
             if showSpacing, let hovered {
                 scene.gaps = spacing(around: boxes[hovered], excluding: hovered)
+            } else if showPadding, let hovered, let padding = padding(in: boxes[hovered]) {
+                scene.padding = padding
             } else {
                 scene.live = crosshair(at: cursor)
                 if settings.showLoupe, !forExport {
                     let p = pixel(at: cursor)
-                    scene.loupe = Loupe(image: snapshot.image, pixel: p, hex: PixelBuffer.hex(buffer.color(x: p.x, y: p.y)))
+                    let color = buffer.color(x: p.x, y: p.y)
+                    let format = settings.colorFormat == .swiftUI ? .hex : settings.colorFormat
+                    var label = format.format(color)
+                    if settings.showPositions { label += "  \(scene.format(CGFloat(p.x) / scale)), \(scene.format(CGFloat(p.y) / scale))" }
+                    scene.loupe = Loupe(image: snapshot.image, pixel: p, cells: settings.loupeCells, label: label, color: color, reference: session?.contrastReference)
                 }
             }
         }
@@ -229,12 +282,12 @@ final class OverlayView: NSView {
     }
 
     private var markedArea: CGRect? {
-        var rects = boxes + pins.map(\.span)
+        var rects = boxes + pins.map(\.span) + lines.map { CGRect(x: min($0.from.x, $0.to.x), y: min($0.from.y, $0.to.y), width: abs($0.to.x - $0.from.x), height: abs($0.to.y - $0.from.y)) }
         if let cursor, let live = crosshair(at: cursor) { rects.append(live.span) }
         return rects.reduce(nil) { $0?.union($1) ?? $1 }
     }
 
-    var hasMarks: Bool { !boxes.isEmpty || !pins.isEmpty || !guides.isEmpty }
+    var hasMarks: Bool { !boxes.isEmpty || !pins.isEmpty || !guides.isEmpty || !lines.isEmpty }
 
     // MARK: - Mouse
 
@@ -257,6 +310,7 @@ final class OverlayView: NSView {
         cursor = convert(event.locationInWindow, from: nil)
         freeDrag = event.modifierFlags.contains(.shift)
         showSpacing = event.modifierFlags.contains(.option)
+        showPadding = event.modifierFlags.contains(.control)
         if window?.isKeyWindow == false { window?.makeKey() }
         session?.activate(self)
         session?.pointerMoved(in: self)
@@ -268,6 +322,7 @@ final class OverlayView: NSView {
         dragStart = point
         dragCurrent = point
         isDragging = false
+        drawsLine = event.modifierFlags.contains(.command)
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -287,14 +342,14 @@ final class OverlayView: NSView {
             dragStart = nil
             dragCurrent = nil
             isDragging = false
+            drawsLine = false
             needsDisplay = true
         }
-        if let rect = dragRect {
-            let box = snapped(rect)
-            boxes.append(box)
-            history.append(.box)
-            session?.lastMeasured = box.size
-        } else {
+        if let line = dragLine {
+            addLine(line)
+        } else if let rect = dragRect {
+            addBox(snapped(rect))
+        } else if !drawsLine {
             pinCrosshair()
         }
     }
@@ -310,28 +365,55 @@ final class OverlayView: NSView {
         guard let cursor, let mark = crosshair(at: cursor) else { return }
         pins.append(mark)
         history.append(.pin)
+        removed.removeAll()
         session?.lastMeasured = mark.span.size
         needsDisplay = true
+    }
+
+    private func addBox(_ box: CGRect) {
+        boxes.append(box)
+        history.append(.box)
+        removed.removeAll()
+        session?.lastMeasured = box.size
+    }
+
+    private func addLine(_ line: RulerLine) {
+        guard line.length > 0 else { return }
+        lines.append(line)
+        history.append(.line)
+        removed.removeAll()
     }
 
     func addGuide(_ axis: Guide.Axis) {
         guard let cursor else { return }
         // On the pixel's leading edge, so guide positions and the distances between them are whole pixels.
         let p = pixel(at: cursor)
-        guides.append(Guide(axis: axis, position: axis == .horizontal ? CGFloat(p.y) / scale : CGFloat(p.x) / scale))
+        addGuide(Guide(axis: axis, position: axis == .horizontal ? CGFloat(p.y) / scale : CGFloat(p.x) / scale))
+    }
+
+    /// A guide through the middle of the hovered box, or of the screen.
+    func addCenterGuide(_ axis: Guide.Axis) {
+        let area = hoveredBoxIndex.map { boxes[$0] } ?? bounds
+        addGuide(Guide(axis: axis, position: axis == .horizontal ? area.midY : area.midX))
+    }
+
+    private func addGuide(_ guide: Guide) {
+        guides.append(guide)
         history.append(.guide)
+        removed.removeAll()
         needsDisplay = true
     }
 
     func removeHoveredOrLast() {
         if let index = hoveredBoxIndex {
-            boxes.remove(at: index)
+            removed.append(.box(boxes.remove(at: index)))
             if let h = history.lastIndex(of: .box) { history.remove(at: h) }
         } else if let mark = history.popLast() {
             switch mark {
-            case .box: boxes.removeLast()
-            case .pin: pins.removeLast()
-            case .guide: guides.removeLast()
+            case .box: removed.append(.box(boxes.removeLast()))
+            case .pin: removed.append(.pin(pins.removeLast()))
+            case .guide: removed.append(.guide(guides.removeLast()))
+            case .line: removed.append(.line(lines.removeLast()))
             }
         } else {
             NSSound.beep()
@@ -339,12 +421,62 @@ final class OverlayView: NSView {
         needsDisplay = true
     }
 
+    /// Puts back the last mark ⌫ or ⌘Z removed.
+    func restoreRemoved() -> Bool {
+        guard let mark = removed.popLast() else { return false }
+        switch mark {
+        case .box(let box): boxes.append(box); history.append(.box)
+        case .pin(let pin): pins.append(pin); history.append(.pin)
+        case .guide(let guide): guides.append(guide); history.append(.guide)
+        case .line(let line): lines.append(line); history.append(.line)
+        }
+        needsDisplay = true
+        return true
+    }
+
     func clearAll() {
         boxes.removeAll()
         pins.removeAll()
         guides.removeAll()
+        lines.removeAll()
         history.removeAll()
+        removed.removeAll()
+        gridOrigin = nil
         needsDisplay = true
+    }
+
+    /// Shows or hides the layout grid, starting at the hovered box's corner if there is one.
+    /// Returns whether it's now shown, and whether it's anchored to a box.
+    func toggleGrid() -> (shown: Bool, anchored: Bool) {
+        if gridOrigin != nil {
+            gridOrigin = nil
+            needsDisplay = true
+            return (false, false)
+        }
+        let box = hoveredBoxIndex.map { boxes[$0] }
+        gridOrigin = box?.origin ?? .zero
+        needsDisplay = true
+        return (true, box != nil)
+    }
+
+    /// Every measurement on this screen as text, one per line, for ⌥⌘C.
+    func measurementList() -> [String] {
+        let s = settings.unit.suffix
+        func f(_ value: CGFloat) -> String { OverlayScene.format(value, scale: scale, unit: settings.unit) }
+        var list: [String] = []
+        for (i, box) in boxes.enumerated() {
+            list.append("Box \(i + 1): \(f(box.width)) × \(f(box.height)) \(s) at \(f(box.minX)), \(f(box.minY))")
+        }
+        for (i, pin) in pins.enumerated() {
+            list.append("Distance \(i + 1): \(f(pin.span.width)) × \(f(pin.span.height)) \(s) at \(f(pin.point.x)), \(f(pin.point.y))")
+        }
+        for (i, line) in lines.enumerated() {
+            list.append("Line \(i + 1): \(f(line.length)) \(s) at \(line.angle)°")
+        }
+        for guide in guides {
+            list.append("Guide: \(guide.axis == .horizontal ? "y" : "x") = \(f(guide.position)) \(s)")
+        }
+        return list
     }
 
     /// What ⌘C copies: the hovered box, else the live crosshair, else the most recent measurement.
@@ -354,14 +486,15 @@ final class OverlayView: NSView {
         return session?.lastMeasured
     }
 
-    var colorUnderCursor: String? {
+    var colorUnderCursor: UInt32? {
         guard let cursor else { return nil }
         let p = pixel(at: cursor)
-        return PixelBuffer.hex(buffer.color(x: p.x, y: p.y))
+        return buffer.color(x: p.x, y: p.y)
     }
 
     func modifiersChanged(_ flags: NSEvent.ModifierFlags) {
         showSpacing = flags.contains(.option)
+        showPadding = flags.contains(.control)
         freeDrag = flags.contains(.shift)
         needsDisplay = true
     }
@@ -414,24 +547,25 @@ extension OverlayView {
     func simulateMove(to point: CGPoint, flags: NSEvent.ModifierFlags = []) {
         cursor = point
         showSpacing = flags.contains(.option)
+        showPadding = flags.contains(.control)
         freeDrag = flags.contains(.shift)
         session?.pointerMoved(in: self)
         needsDisplay = true
     }
 
-    func simulateDrag(from start: CGPoint, to end: CGPoint, release: Bool) {
+    func simulateDrag(from start: CGPoint, to end: CGPoint, release: Bool, line: Bool = false, constrained: Bool = false) {
         dragStart = start
         dragCurrent = end
         isDragging = true
+        drawsLine = line
+        freeDrag = constrained
         cursor = end
         if release {
-            let box = snapped(dragRect!)
-            boxes.append(box)
-            history.append(.box)
-            session?.lastMeasured = box.size
+            if let line = dragLine { addLine(line) } else if let rect = dragRect { addBox(snapped(rect)) }
             dragStart = nil
             dragCurrent = nil
             isDragging = false
+            drawsLine = false
         }
         needsDisplay = true
     }
