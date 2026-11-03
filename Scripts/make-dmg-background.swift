@@ -1,6 +1,6 @@
 // Renders the installer window background: Resources/dmg/background.tiff (1x + 2x).
 // Usage: swift Scripts/make-dmg-background.swift
-// Icon centers must match icon_locations in Resources/dmg/settings.py: (160, 186) and (480, 186).
+// The arrow sits between icon_locations in Resources/dmg/settings.py: (160, 186) and (480, 186).
 import AppKit
 
 let size = NSSize(width: 640, height: 400)
@@ -11,22 +11,9 @@ func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> NSColor {
     NSColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
-func glow(_ center: NSPoint, _ radius: CGFloat, _ c: NSColor) {
-    NSGradient(colors: [c, c.withAlphaComponent(0)])!.draw(fromCenter: center, radius: 0, toCenter: center, radius: radius, options: [])
-}
-
 func draw() {
-    let bounds = NSRect(origin: .zero, size: size)
-    NSGradient(colors: [color(0x1A1446), color(0x0E0C24)])!.draw(in: bounds, angle: -90)
-    glow(appCenter, 170, color(0x5646EB, 0.55))
-    glow(applicationsCenter, 150, color(0xFF3D7F, 0.28))
-
-    color(0xFFFFFF, 0.05).setFill()
-    for x in stride(from: CGFloat(16), to: size.width, by: 24) {
-        for y in stride(from: CGFloat(16), to: size.height, by: 24) {
-            NSBezierPath(ovalIn: NSRect(x: x - 0.9, y: y - 0.9, width: 1.8, height: 1.8)).fill()
-        }
-    }
+    color(0x1E1E20).setFill()
+    NSRect(origin: .zero, size: size).fill()
 
     // A dimension line between the two icons, in the measuring style.
     let y = appCenter.y
@@ -42,9 +29,8 @@ func draw() {
 
     let paragraph = NSMutableParagraphStyle()
     paragraph.alignment = .center
-    let rounded = NSFont.systemFont(ofSize: 15, weight: .semibold).fontDescriptor.withDesign(.rounded)!
     NSAttributedString(string: "Drag PixelMark into Applications", attributes: [
-        .font: NSFont(descriptor: rounded, size: 15)!,
+        .font: NSFont.systemFont(ofSize: 14, weight: .medium),
         .foregroundColor: NSColor.white.withAlphaComponent(0.85),
         .paragraphStyle: paragraph,
     ]).draw(in: NSRect(x: 0, y: 64, width: size.width, height: 24))

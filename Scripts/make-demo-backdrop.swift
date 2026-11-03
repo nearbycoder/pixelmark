@@ -33,10 +33,8 @@ struct Desktop: View {
 
     private var wallpaper: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 0.13, green: 0.10, blue: 0.36), Color(red: 0.05, green: 0.06, blue: 0.16)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            Circle().fill(Color(red: 0.95, green: 0.25, blue: 0.55).opacity(0.55)).frame(width: 900).blur(radius: 160).offset(x: -620, y: -360)
-            Circle().fill(Color(red: 0.30, green: 0.45, blue: 1.0).opacity(0.55)).frame(width: 1000).blur(radius: 180).offset(x: 640, y: 380)
-            Circle().fill(Color(red: 0.55, green: 0.30, blue: 1.0).opacity(0.45)).frame(width: 700).blur(radius: 160).offset(x: 420, y: -420)
+            LinearGradient(colors: [Color(red: 0.36, green: 0.40, blue: 0.47), Color(red: 0.15, green: 0.17, blue: 0.21)], startPoint: .top, endPoint: .bottom)
+            Ellipse().fill(Color.white.opacity(0.10)).frame(width: 1800, height: 700).blur(radius: 200).offset(y: -420)
         }
     }
 

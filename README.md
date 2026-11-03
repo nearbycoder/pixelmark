@@ -15,7 +15,7 @@ A free, open source screen ruler for macOS. Press **⇧⌘2**, hover, and PixelM
 - **Loupe and colors.** A magnified view of the pixels under the pointer. Press C to copy the hex color.
 - **Copy formats.** ⌘C copies `320 × 48`, `320x48`, CSS or a SwiftUI `.frame`.
 - **Screenshots.** ⌘S saves and copies the screen with every measurement on it; ⇧⌘S crops to the measured area.
-- **Points or pixels,** adjustable edge tolerance, every display, and Liquid Glass throughout.
+- **Points or pixels,** adjustable edge tolerance, and every connected display.
 
 PixelMark takes one still image of each display when you start measuring and discards it when you finish. It has no network access, analytics or account.
 

@@ -1,7 +1,7 @@
 # dmgbuild settings for the PixelMark installer window.
 # Usage: dmgbuild -s Resources/dmg/settings.py -D app=path/to/PixelMark.app "PixelMark 1.0.0" PixelMark-1.0.0.dmg
 # The background is rendered by Scripts/make-dmg-background.swift; keep icon positions in
-# sync with the glows drawn there.
+# sync with the arrow drawn there.
 import os.path
 
 here = os.path.dirname(os.path.abspath(globals().get("__file__", "Resources/dmg/settings.py")))

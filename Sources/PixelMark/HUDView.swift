@@ -64,7 +64,6 @@ struct HUDView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .tint(settings.markColor.color)
         .onChange(of: isActive) { _, active in
             if !active { ["bar", "help", "toast"].forEach { regions.set($0, nil) } }
         }
@@ -86,93 +85,71 @@ struct HUDView: View {
     @ViewBuilder
     private var bar: some View {
         if settings.showHelperBar {
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    ViewThatFits(in: .horizontal) {
-                        hints(compact: false)
-                        hints(compact: true)
-                        EmptyView()
-                    }
-                    .frame(maxWidth: 820)
-
-                    Button(action: { AppCoordinator.shared?.session?.toggleUnit() }) {
-                        Text(settings.unit.suffix)
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .frame(width: 34, height: 30)
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                    .help("Switch between points and pixels (U)")
-
-                    toleranceControl
-
-                    Button(action: { AppCoordinator.shared?.session?.end() }) {
-                        Text("Done")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(settings.markColor.nsColor.prefersDarkText ? .black : .white)
-                            .padding(.horizontal, 14)
-                            .frame(height: 30)
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .glassEffect(.regular.tint(settings.markColor.color).interactive(), in: .capsule)
-                    .help("Finish measuring (Esc)")
+            HStack(spacing: 14) {
+                ViewThatFits(in: .horizontal) {
+                    hints(full: true)
+                    hints(full: false)
+                    EmptyView()
                 }
-                .padding(6)
-                .glassEffect(.regular, in: .capsule)
+                .frame(maxWidth: 640)
+
+                Divider().frame(height: 18)
+
+                Button(action: { AppCoordinator.shared?.session?.toggleUnit() }) {
+                    Text(settings.unit.suffix)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .frame(minWidth: 22)
+                }
+                .buttonStyle(.plain)
+                .help("Switch between points and pixels (U)")
+
+                toleranceControl
+
+                Button("Done") { AppCoordinator.shared?.session?.end() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .semibold))
+                    .help("Finish measuring (Esc)")
             }
+            .padding(.horizontal, 18)
+            .frame(height: 40)
+            .glassEffect(.regular, in: .capsule)
             .fixedSize()
             .reportFrame("bar", to: regions)
             .transition(.opacity)
         }
     }
 
-    private func hints(compact: Bool) -> some View {
-        HStack(spacing: compact ? 10 : 14) {
-            Image(nsImage: StatusBarController.menuBarIcon())
-                .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(settings.markColor.color.gradient, in: Circle())
-            KeyHint(keys: ["drag"], label: "Measure", compact: compact)
-            KeyHint(keys: ["click"], label: "Pin", compact: compact)
-            KeyHint(keys: ["⌥"], label: "Spacing", compact: compact)
-            if !compact {
-                KeyHint(keys: ["H", "V"], label: "Guides", compact: compact)
-                KeyHint(keys: ["C"], label: "Color", compact: compact)
+    private func hints(full: Bool) -> some View {
+        HStack(spacing: 14) {
+            KeyHint(keys: ["Drag"], label: "box")
+            KeyHint(keys: ["Click"], label: "pin")
+            KeyHint(keys: ["⌥"], label: "spacing")
+            if full {
+                KeyHint(keys: ["⌘C"], label: "copy")
+                KeyHint(keys: ["⌘S"], label: "screenshot")
             }
-            KeyHint(keys: ["⌘C"], label: "Copy", compact: compact)
-            KeyHint(keys: ["⌘S"], label: "Save", compact: compact)
-            KeyHint(keys: ["?"], label: "More", compact: compact)
+            KeyHint(keys: ["?"], label: "all shortcuts")
         }
-        .padding(.leading, 0)
-        .padding(.trailing, 4)
         .fixedSize()
     }
 
     private var toleranceControl: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 6) {
             Button(action: { AppCoordinator.shared?.session?.adjustTolerance(-2) }) {
-                Image(systemName: "minus").frame(width: 26, height: 30).contentShape(Rectangle())
+                Image(systemName: "minus").frame(width: 14, height: 20).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            VStack(spacing: -1) {
-                Text("\(settings.tolerance)")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .contentTransition(.numericText(value: Double(settings.tolerance)))
-                Text("tolerance")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(width: 50)
+            Text("Tolerance \(settings.tolerance)")
+                .font(.system(size: 12))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .contentTransition(.numericText(value: Double(settings.tolerance)))
             Button(action: { AppCoordinator.shared?.session?.adjustTolerance(2) }) {
-                Image(systemName: "plus").frame(width: 26, height: 30).contentShape(Rectangle())
+                Image(systemName: "plus").frame(width: 14, height: 20).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .font(.system(size: 11, weight: .bold))
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .font(.system(size: 10, weight: .semibold))
         .help("How different two colors must be to count as an edge ([ and ])")
     }
 }
@@ -180,20 +157,14 @@ struct HUDView: View {
 struct KeyHint: View {
     let keys: [String]
     let label: String
-    var compact = false
 
     var body: some View {
         HStack(spacing: 5) {
-            HStack(spacing: 3) {
-                ForEach(keys, id: \.self) { Keycap(text: $0) }
-            }
-            if !compact {
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
+            ForEach(keys, id: \.self) { Keycap(text: $0) }
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
         }
-        .help(label)
     }
 }
 
@@ -202,14 +173,10 @@ struct Keycap: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .padding(.horizontal, 6)
-            .frame(minWidth: 22, minHeight: 22)
-            .background(.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .strokeBorder(.primary.opacity(0.12), lineWidth: 0.5)
-            }
+            .font(.system(size: 11, weight: .medium))
+            .padding(.horizontal, 5)
+            .frame(minWidth: 18, minHeight: 18)
+            .background(.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
     }
 }
 
@@ -247,7 +214,7 @@ struct ShortcutSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 Text("Shortcuts")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold))
                 Spacer()
                 Button(action: onClose) {
                     Image(systemName: "xmark")
@@ -261,14 +228,13 @@ struct ShortcutSheet: View {
             HStack(alignment: .top, spacing: 28) {
                 ForEach(Self.groups, id: \.0) { group in
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(group.0.uppercased())
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(0.8)
-                            .foregroundStyle(.tint)
+                        Text(group.0)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
                         ForEach(group.1, id: \.0) { item in
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 Text(item.0)
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 12, weight: .medium))
                                     .frame(width: 78, alignment: .leading)
                                 Text(item.1)
                                     .font(.system(size: 12))
