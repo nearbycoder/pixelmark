@@ -22,6 +22,8 @@ final class SettingsWindowController {
                 item.image = NSImage(systemSymbolName: tab.symbol, accessibilityDescription: tab.title)
                 tabs.addTabViewItem(item)
             }
+            // Opens on General the first time, then wherever it was left.
+            tabs.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: AppState.shared.settingsTab) ?? 0
             let window = NSWindow(contentViewController: tabs)
             window.styleMask = [.titled, .closable]
             window.toolbarStyle = .preference
@@ -30,8 +32,7 @@ final class SettingsWindowController {
             self.window = window
         }
         AppState.shared.refreshPermission()
-        tabs?.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: AppState.shared.settingsTab) ?? 0
-        window?.center()
+        if window?.isVisible != true { window?.center() }
         if AppCoordinator.isHarness {
             window?.orderBack(nil) // screenshots without stealing focus
         } else {
@@ -42,11 +43,12 @@ final class SettingsWindowController {
 }
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case measuring, capture, shortcuts, about
+    case general, measuring, capture, shortcuts, about
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .general: "General"
         case .measuring: "Measuring"
         case .capture: "Copy & Save"
         case .shortcuts: "Shortcuts"
@@ -56,6 +58,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .general: "gearshape"
         case .measuring: "ruler"
         case .capture: "doc.on.doc"
         case .shortcuts: "keyboard"
@@ -72,6 +75,7 @@ struct SettingsPane: View {
     var body: some View {
         Form {
             switch tab {
+            case .general: general
             case .measuring: measuring
             case .capture: capture
             case .shortcuts: shortcuts
@@ -85,19 +89,38 @@ struct SettingsPane: View {
     }
 
     @ViewBuilder
-    private var measuring: some View {
+    private var general: some View {
         if !state.hasScreenPermission {
             Section {
                 PermissionRow()
             }
         }
         Section {
+            LabeledContent("Start measuring") {
+                ShortcutRecorder(shortcut: $settings.measureShortcut, isUnavailable: state.shortcutUnavailable)
+            }
+        } footer: {
+            Text("Works from any app. Press it again, or Esc, to finish.")
+        }
+        Section {
+            Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: { settings.launchAtLogin = $0 }))
+            Toggle("Show the helper bar while measuring", isOn: $settings.showHelperBar)
+        }
+        Section {
+            LabeledContent("Reset all settings") {
+                Button("Reset…", action: confirmReset)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var measuring: some View {
+        Section {
             LabeledContent("Edge tolerance") {
                 HStack {
                     Slider(
-                        value: Binding(get: { Double(settings.tolerance) }, set: { settings.tolerance = Int($0) }),
-                        in: Double(AppSettings.toleranceRange.lowerBound)...Double(AppSettings.toleranceRange.upperBound),
-                        step: 1
+                        value: Binding(get: { Double(settings.tolerance) }, set: { settings.tolerance = Int($0.rounded()) }),
+                        in: Double(AppSettings.toleranceRange.lowerBound)...Double(AppSettings.toleranceRange.upperBound)
                     )
                     .frame(width: 180)
                     Text("\(settings.tolerance)")
@@ -121,7 +144,6 @@ struct SettingsPane: View {
                 ColorChoice(selection: $settings.markColor)
             }
             Toggle("Show loupe", isOn: $settings.showLoupe)
-            Toggle("Show helper bar", isOn: $settings.showHelperBar)
         }
 
         Section {
@@ -179,28 +201,17 @@ struct SettingsPane: View {
         } footer: {
             Text("Screenshots include every measurement on screen. ⇧⌘S crops to the measured area.")
         }
-
-        Section {
-            Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: { settings.launchAtLogin = $0 }))
-            LabeledContent("Reset all settings") {
-                Button("Reset", action: settings.resetToDefaults)
-            }
-        }
     }
 
+    /// The same list as the ? sheet while measuring.
     @ViewBuilder
     private var shortcuts: some View {
-        Section {
-            LabeledContent("Start measuring") {
-                ShortcutRecorder(shortcut: $settings.measureShortcut, isUnavailable: state.shortcutUnavailable)
-            }
-        } footer: {
-            Text("Works from any app. Press it again, or Esc, to finish.")
-        }
-        Section("While measuring") {
-            ForEach(ShortcutSheet.groups.flatMap(\.1), id: \.0) { item in
-                LabeledContent(item.1) {
-                    Text(item.0).font(.system(.body, design: .rounded).weight(.medium))
+        ForEach(ShortcutSheet.groups, id: \.0) { group in
+            Section(group.0) {
+                ForEach(group.1, id: \.0) { item in
+                    LabeledContent(item.1) {
+                        Text(item.0).font(.body.weight(.medium))
+                    }
                 }
             }
         }
@@ -227,6 +238,18 @@ struct SettingsPane: View {
             Link("Report an issue", destination: StatusBarController.repositoryURL.appendingPathComponent("issues"))
             Button("Show welcome window") { AppCoordinator.shared?.showWelcome() }
                 .buttonStyle(.link)
+        }
+    }
+
+    private func confirmReset() {
+        let alert = NSAlert()
+        alert.messageText = "Reset all settings?"
+        alert.informativeText = "Units, colors, formats, the shortcut and every other setting go back to how PixelMark started."
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.hasDestructiveAction = true
+        if alert.runModal() == .alertFirstButtonReturn {
+            settings.resetToDefaults()
         }
     }
 

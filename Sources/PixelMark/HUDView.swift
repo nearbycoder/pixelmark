@@ -80,7 +80,14 @@ struct HUDView: View {
                 #endif
 
                 if model.showHelp {
-                    ShortcutSheet { withAnimation(.snappy) { model.showHelp = false } }
+                    // Dims the busy screen behind the sheet; clicking it closes the sheet.
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: closeHelp)
+                        .reportFrame("scrim", to: regions)
+                        .transition(.opacity)
+                    ShortcutSheet(onClose: closeHelp)
                         .reportFrame("help", to: regions)
                         .transition(.scale(scale: 0.94).combined(with: .opacity))
                 }
@@ -88,8 +95,12 @@ struct HUDView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: isActive) { _, active in
-            if !active { ["bar", "help", "toast"].forEach { regions.set($0, nil) } }
+            if !active { ["bar", "help", "scrim"].forEach { regions.set($0, nil) } }
         }
+    }
+
+    private func closeHelp() {
+        withAnimation(.snappy) { model.showHelp = false }
     }
 
     @ViewBuilder
@@ -125,6 +136,7 @@ struct HUDView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Switch between points and pixels (U)")
+                .accessibilityLabel(settings.unit == .points ? "Measuring in points" : "Measuring in pixels")
 
                 toleranceControl
 
@@ -157,20 +169,22 @@ struct HUDView: View {
     }
 
     private var toleranceControl: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 2) {
             Button(action: { AppCoordinator.shared?.session?.adjustTolerance(-2) }) {
-                Image(systemName: "minus").frame(width: 14, height: 20).contentShape(Rectangle())
+                Image(systemName: "minus").frame(width: 20, height: 24).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Lower tolerance")
             Text("Tolerance \(settings.tolerance)")
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .contentTransition(.numericText(value: Double(settings.tolerance)))
             Button(action: { AppCoordinator.shared?.session?.adjustTolerance(2) }) {
-                Image(systemName: "plus").frame(width: 14, height: 20).contentShape(Rectangle())
+                Image(systemName: "plus").frame(width: 20, height: 24).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Raise tolerance")
         }
         .font(.system(size: 10, weight: .semibold))
         .help("How different two colors must be to count as an edge ([ and ])")
@@ -289,7 +303,7 @@ struct ShortcutSheet: View {
                 .buttonStyle(.plain)
                 .glassEffect(.regular.interactive(), in: .circle)
             }
-            HStack(alignment: .top, spacing: 28) {
+            HStack(alignment: .top, spacing: 36) {
                 ForEach(Self.groups, id: \.0) { group in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(group.0)
@@ -303,11 +317,10 @@ struct ShortcutSheet: View {
                                 Text(item.1)
                                     .font(.system(size: 12))
                                     .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                    .fixedSize()
                             }
                         }
                     }
-                    .frame(width: 290, alignment: .leading)
                 }
             }
         }

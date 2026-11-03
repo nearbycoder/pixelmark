@@ -262,7 +262,7 @@ final class AppState: ObservableObject {
     @Published var hasScreenPermission = ScreenPermission.isGranted
     @Published var shortcutUnavailable = false
     @Published var isRecordingShortcut = false
-    @Published var settingsTab: SettingsTab = .measuring
+    @Published var settingsTab: SettingsTab = .general
 
     func refreshPermission() {
         let granted = ScreenPermission.isGranted

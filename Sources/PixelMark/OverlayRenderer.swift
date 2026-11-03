@@ -189,8 +189,9 @@ enum OverlayRenderer {
         if scene.showsRulers {
             drawRulers(scene, ctx: ctx)
         }
-        if let loupe = scene.loupe, let point = scene.live?.point {
-            drawLoupe(loupe, at: point, scene: scene, ctx: ctx)
+        if let loupe = scene.loupe, let live = scene.live {
+            let label = crosshairLabelRect(scene.dimensions(live.span.size), near: live.point, scene: scene)
+            drawLoupe(loupe, at: live.point, avoiding: label, scene: scene, ctx: ctx)
         }
     }
 
@@ -231,11 +232,16 @@ enum OverlayRenderer {
         }
 
         let text = scene.dimensions(span.size)
-        var origin = CGPoint(x: point.x + 14, y: point.y + 16)
+        drawPill(text, at: crosshairLabelRect(text, near: point, scene: scene).origin, font: labelFont, scene: scene)
+    }
+
+    /// Below and to the right of the point, flipped to whichever side keeps it on screen.
+    private static func crosshairLabelRect(_ text: String, near point: CGPoint, scene: OverlayScene) -> CGRect {
         let size = pillSize(text, font: labelFont)
+        var origin = CGPoint(x: point.x + 14, y: point.y + 16)
         if origin.x + size.width > scene.size.width - 6 { origin.x = point.x - 14 - size.width }
         if origin.y + size.height > scene.size.height - 6 { origin.y = point.y - 16 - size.height }
-        drawPill(text, at: origin, font: labelFont, scene: scene)
+        return CGRect(origin: origin, size: size)
     }
 
     private static func drawBox(_ rect: CGRect, scene: OverlayScene, ctx: CGContext, emphasized: Bool, showsLabel: Bool = true, matches: Bool = false) {
@@ -247,6 +253,7 @@ enum OverlayRenderer {
         ctx.setLineWidth(1)
         ctx.stroke(rect.insetBy(dx: 0.5, dy: 0.5))
         ctx.restoreGState()
+        guard showsLabel else { return }
         if scene.showsPositions {
             let text = "\(scene.format(rect.minX)), \(scene.format(rect.minY))"
             let size = pillSize(text, font: smallFont)
@@ -254,7 +261,6 @@ enum OverlayRenderer {
             if origin.y < 6 { origin.y = rect.minY + 5; origin.x += 5 }
             drawPill(text, at: origin, font: smallFont, scene: scene, muted: true)
         }
-        guard showsLabel else { return }
 
         // Boxes that are exactly the same size as another get an = mark.
         let text = (matches ? "= " : "") + scene.boxLabel(rect.size)
@@ -362,14 +368,32 @@ enum OverlayRenderer {
         ctx.restoreGState()
     }
 
-    private static func drawLoupe(_ loupe: Loupe, at point: CGPoint, scene: OverlayScene, ctx: CGContext) {
+    /// The loupe with its color label below and the contrast check above, kept clear of the crosshair's label and the screen edges.
+    private static func drawLoupe(_ loupe: Loupe, at point: CGPoint, avoiding sizeLabel: CGRect, scene: OverlayScene, ctx: CGContext) {
         let diameter: CGFloat = 124
         let cells = loupe.cells
         let cell = diameter / CGFloat(cells)
+        let spacing: CGFloat = 6
+        let labelSize = pillSize(loupe.label, font: smallFont)
+        let above = loupe.reference == nil ? 0 : labelSize.height + spacing
+        let group = CGSize(width: max(diameter, labelSize.width), height: above + diameter + spacing + labelSize.height)
 
-        var rect = CGRect(x: point.x + 22, y: point.y - 22 - diameter, width: diameter, height: diameter)
-        if rect.maxX > scene.size.width - 8 { rect.origin.x = point.x - 22 - diameter }
-        if rect.minY < 8 { rect.origin.y = point.y + 48 }
+        // Above and to the right of the pointer first, then whichever corner fits.
+        let reach: CGFloat = 22
+        let left = point.x - reach - group.width, right = point.x + reach
+        let top = point.y - reach - group.height
+        let candidates = [
+            CGPoint(x: right, y: top), CGPoint(x: left, y: top),
+            CGPoint(x: right, y: point.y + reach), CGPoint(x: left, y: point.y + reach),
+            CGPoint(x: right, y: sizeLabel.maxY + spacing), CGPoint(x: left, y: sizeLabel.maxY + spacing),
+            CGPoint(x: right, y: sizeLabel.minY - spacing - group.height), CGPoint(x: left, y: sizeLabel.minY - spacing - group.height),
+        ].map { CGRect(origin: $0, size: group) }
+        let screen = CGRect(origin: .zero, size: scene.size).insetBy(dx: 8, dy: 8)
+        let frame = candidates.first { screen.contains($0) && !$0.intersects(sizeLabel) } ?? candidates[0].offsetBy(
+            dx: min(max(screen.minX - candidates[0].minX, 0), screen.maxX - candidates[0].maxX),
+            dy: max(screen.minY - candidates[0].minY, 0)
+        )
+        let rect = CGRect(x: frame.midX - diameter / 2, y: frame.minY + above, width: diameter, height: diameter)
 
         let half = cells / 2
         let source = CGRect(x: loupe.pixel.x - half, y: loupe.pixel.y - half, width: cells, height: cells)
@@ -425,14 +449,11 @@ enum OverlayRenderer {
         ctx.setLineWidth(2)
         ctx.strokeEllipse(in: rect.insetBy(dx: 1, dy: 1))
 
-        let text = loupe.label
-        let size = pillSize(text, font: smallFont)
-        drawPill(text, at: CGPoint(x: rect.midX - size.width / 2, y: rect.maxY + 6), font: smallFont, scene: scene, muted: true)
+        drawPill(loupe.label, at: CGPoint(x: rect.midX - labelSize.width / 2, y: rect.maxY + spacing), font: smallFont, scene: scene, muted: true)
 
         if let reference = loupe.reference {
             let ratio = PixelBuffer.contrastRatio(reference, loupe.color)
-            // Above the loupe, clear of the crosshair's label below it.
-            drawContrast(ratio, colors: (reference, loupe.color), centeredAt: rect.midX, top: rect.minY - 6 - size.height, ctx: ctx)
+            drawContrast(ratio, colors: (reference, loupe.color), centeredAt: rect.midX, top: frame.minY, ctx: ctx)
         }
     }
 

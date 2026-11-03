@@ -13,7 +13,7 @@ final class OverlayView: NSView {
     private var guides: [Guide] = []
     private var lines: [RulerLine] = []
     private var history: [Mark] = []
-    /// What ⌫ and ⌘Z took away, for ⇧⌘Z.
+    /// What ⌫, ⌘Z and X took away, for ⇧⌘Z.
     private var removed: [Removed] = []
     private var dragStart: CGPoint?
     private var dragCurrent: CGPoint?
@@ -27,7 +27,10 @@ final class OverlayView: NSView {
     private var gridOrigin: CGPoint?
 
     private enum Mark { case box, pin, guide, line }
-    private enum Removed { case box(CGRect), pin(Crosshair), guide(Guide), line(RulerLine) }
+    private enum Removed {
+        case box(CGRect), pin(Crosshair), guide(Guide), line(RulerLine)
+        case everything(boxes: [CGRect], pins: [Crosshair], guides: [Guide], lines: [RulerLine], history: [Mark])
+    }
 
     #if DEBUG
     /// The demo video draws its own pointer, since recordings leave the real one out.
@@ -288,6 +291,7 @@ final class OverlayView: NSView {
     }
 
     var hasMarks: Bool { !boxes.isEmpty || !pins.isEmpty || !guides.isEmpty || !lines.isEmpty }
+    var showsGrid: Bool { gridOrigin != nil }
 
     // MARK: - Mouse
 
@@ -421,7 +425,7 @@ final class OverlayView: NSView {
         needsDisplay = true
     }
 
-    /// Puts back the last mark ⌫ or ⌘Z removed.
+    /// Puts back the last mark ⌫ or ⌘Z removed, or everything X cleared.
     func restoreRemoved() -> Bool {
         guard let mark = removed.popLast() else { return false }
         switch mark {
@@ -429,20 +433,24 @@ final class OverlayView: NSView {
         case .pin(let pin): pins.append(pin); history.append(.pin)
         case .guide(let guide): guides.append(guide); history.append(.guide)
         case .line(let line): lines.append(line); history.append(.line)
+        case .everything(let boxes, let pins, let guides, let lines, let history):
+            (self.boxes, self.pins, self.guides, self.lines, self.history) = (boxes, pins, guides, lines, history)
         }
         needsDisplay = true
         return true
     }
 
+    /// Removes every mark and the grid; ⇧⌘Z puts the marks back.
     func clearAll() {
+        gridOrigin = nil
+        needsDisplay = true
+        guard hasMarks else { return }
+        removed.append(.everything(boxes: boxes, pins: pins, guides: guides, lines: lines, history: history))
         boxes.removeAll()
         pins.removeAll()
         guides.removeAll()
         lines.removeAll()
         history.removeAll()
-        removed.removeAll()
-        gridOrigin = nil
-        needsDisplay = true
     }
 
     /// Shows or hides the layout grid, starting at the hovered box's corner if there is one.

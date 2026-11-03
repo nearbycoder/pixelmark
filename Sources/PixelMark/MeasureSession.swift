@@ -143,8 +143,11 @@ final class MeasureSession {
             hud.showToast("Colors copy as \(sample)", symbol: "eyedropper.halffull")
         case "c": copyColor(from: overlay)
         case "x":
+            let hadMarks = overlay.hasMarks
+            if !hadMarks && !overlay.showsGrid && contrastReference == nil { NSSound.beep() }
             overlay.clearAll()
             contrastReference = nil
+            if hadMarks { hud.showToast("Cleared. ⇧⌘Z brings it back", symbol: "trash") }
         case "l":
             settings.showLoupe.toggle()
             hud.showToast(settings.showLoupe ? "Loupe on" : "Loupe off", symbol: "magnifyingglass")
