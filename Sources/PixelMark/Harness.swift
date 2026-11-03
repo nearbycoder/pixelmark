@@ -31,9 +31,9 @@ enum Harness {
             window.level = .normal
             window.orderBack(nil)
         }
-        for (prefix, kind) in [("video:", DemoVideo.Script.tour), ("video-new:", .whatsNew)] where script.hasPrefix(prefix) {
-            let video = DemoVideo(session: session, overlay: overlay, script: kind)
-            video.run(to: URL(fileURLWithPath: String(script.dropFirst(prefix.count))))
+        if script.hasPrefix("video:") {
+            let video = DemoVideo(session: session, overlay: overlay)
+            video.run(to: URL(fileURLWithPath: String(script.dropFirst("video:".count))))
             self.video = video
             return
         }

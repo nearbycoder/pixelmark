@@ -134,7 +134,6 @@
     .head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
     h2 { font-size: clamp(30px, 4vw, 40px); letter-spacing: -0.025em; line-height: 1.12; font-weight: 600; margin: 0 0 12px; text-wrap: balance; }
     .head p { color: var(--muted); margin: 0; font-size: 18px; text-wrap: pretty; }
-    .head p.eyebrow { color: var(--mark); font-size: 14px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 10px; }
 
     .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 24px; }
@@ -212,7 +211,6 @@
       <a class="brand" href="#"><img src="assets/icon-256.png" alt="">PixelMark</a>
       <nav>
         <a href="#tour">Tour</a>
-        <a href="#new">What's new</a>
         <a href="#features">Features</a>
         <a href="#shortcuts">Shortcuts</a>
         <a href="#faq">FAQ</a>
@@ -240,54 +238,34 @@
     <div class="tour" id="tour">
       <div class="wall">
         <div class="frame">
-          <video src="assets/demo.mp4" poster="assets/demo-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A one-minute tour of every PixelMark feature"></video>
+          <video src="assets/demo.mp4" poster="assets/demo-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A short tour of every PixelMark feature"></video>
         </div>
       </div>
       <ul class="chapters">
-        <li><button type="button" data-t="3.8">Hover <time>0:04</time></button></li>
-        <li><button type="button" data-t="11.0">Color <time>0:11</time></button></li>
-        <li><button type="button" data-t="13.9">Boxes <time>0:14</time></button></li>
-        <li><button type="button" data-t="20.3">Copy size <time>0:20</time></button></li>
-        <li><button type="button" data-t="24.3">Pin <time>0:24</time></button></li>
-        <li><button type="button" data-t="29.0">Tolerance <time>0:29</time></button></li>
-        <li><button type="button" data-t="31.8">Spacing <time>0:32</time></button></li>
-        <li><button type="button" data-t="40.6">Guides <time>0:40</time></button></li>
-        <li><button type="button" data-t="45.6">Units <time>0:45</time></button></li>
-        <li><button type="button" data-t="49.4">Nudge <time>0:49</time></button></li>
-        <li><button type="button" data-t="51.5">Screenshot <time>0:51</time></button></li>
-        <li><button type="button" data-t="55.9">Shortcuts <time>0:56</time></button></li>
+        <li><button type="button" data-t="3.1">Hover <time>0:03</time></button></li>
+        <li><button type="button" data-t="7.7">Boxes <time>0:08</time></button></li>
+        <li><button type="button" data-t="13.0">Copy size <time>0:13</time></button></li>
+        <li><button type="button" data-t="15.5">Pin <time>0:15</time></button></li>
+        <li><button type="button" data-t="18.7">Lines <time>0:19</time></button></li>
+        <li><button type="button" data-t="23.4">Tolerance <time>0:23</time></button></li>
+        <li><button type="button" data-t="25.4">Same size <time>0:25</time></button></li>
+        <li><button type="button" data-t="30.4">Spacing <time>0:30</time></button></li>
+        <li><button type="button" data-t="35.0">Padding <time>0:35</time></button></li>
+        <li><button type="button" data-t="40.0">Copy all <time>0:40</time></button></li>
+        <li><button type="button" data-t="41.6">Undo <time>0:41</time></button></li>
+        <li><button type="button" data-t="44.4">Rulers <time>0:44</time></button></li>
+        <li><button type="button" data-t="47.7">Grid <time>0:47</time></button></li>
+        <li><button type="button" data-t="52.5">Guides <time>0:52</time></button></li>
+        <li><button type="button" data-t="56.7">Loupe zoom <time>0:56</time></button></li>
+        <li><button type="button" data-t="60.3">Colors <time>1:00</time></button></li>
+        <li><button type="button" data-t="65.7">Contrast <time>1:05</time></button></li>
+        <li><button type="button" data-t="71.0">Units <time>1:11</time></button></li>
+        <li><button type="button" data-t="73.8">Nudge <time>1:14</time></button></li>
+        <li><button type="button" data-t="75.5">Screenshot <time>1:15</time></button></li>
+        <li><button type="button" data-t="79.2">Mark color <time>1:19</time></button></li>
+        <li><button type="button" data-t="81.3">Shortcuts <time>1:21</time></button></li>
       </ul>
     </div>
-
-    <section id="new" class="tour">
-      <div class="head">
-        <p class="eyebrow">New in 1.2</p>
-        <h2>Fourteen new ways to check a layout</h2>
-        <p>Rulers, a layout grid, padding, point-to-point lines, a contrast checker and more. Every one is a single key away.</p>
-      </div>
-      <div class="wall">
-        <div class="frame">
-          <video src="assets/whats-new.mp4" poster="assets/whats-new-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A one-minute tour of what's new in PixelMark 1.2"></video>
-        </div>
-      </div>
-      <ul class="chapters">
-        <li><button type="button" data-t="3.2">Rulers <time>0:03</time></button></li>
-        <li><button type="button" data-t="6.0">Positions <time>0:06</time></button></li>
-        <li><button type="button" data-t="9.2">Padding <time>0:09</time></button></li>
-        <li><button type="button" data-t="13.5">Aspect ratios <time>0:13</time></button></li>
-        <li><button type="button" data-t="16.6">Same size <time>0:16</time></button></li>
-        <li><button type="button" data-t="21.2">Copy all <time>0:21</time></button></li>
-        <li><button type="button" data-t="23.1">Undo and redo <time>0:23</time></button></li>
-        <li><button type="button" data-t="26.3">Lines <time>0:26</time></button></li>
-        <li><button type="button" data-t="31.9">Center guides <time>0:32</time></button></li>
-        <li><button type="button" data-t="37.0">Grid <time>0:37</time></button></li>
-        <li><button type="button" data-t="40.2">Loupe zoom <time>0:40</time></button></li>
-        <li><button type="button" data-t="44.7">Contrast <time>0:45</time></button></li>
-        <li><button type="button" data-t="51.0">Color formats <time>0:51</time></button></li>
-        <li><button type="button" data-t="55.7">Mark color <time>0:56</time></button></li>
-        <li><button type="button" data-t="60.9">Shortcuts <time>1:01</time></button></li>
-      </ul>
-    </section>
 
     <section id="try">
       <div class="head">
