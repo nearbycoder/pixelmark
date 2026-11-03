@@ -1,4 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#dc2626"/>
-  <text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#ffffff">P</text>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5646eb"/><stop offset="1" stop-color="#170e46"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <g fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.5 23.5v-7a1.5 1.5 0 0 1 1.5-1.5h7.5M40.5 15H48a1.5 1.5 0 0 1 1.5 1.5v7M49.5 40.5V48a1.5 1.5 0 0 1-1.5 1.5h-7.5M23.5 49.5H16a1.5 1.5 0 0 1-1.5-1.5v-7.5"/>
+  </g>
+  <path d="M22 32h20M22 27.3v9.4M42 27.3v9.4" stroke="#ff3d7f" stroke-width="2.8" stroke-linecap="round"/>
 </svg>

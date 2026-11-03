@@ -1,0 +1,54 @@
+# Xcode project definition. Generate PixelMark.xcodeproj with: xcodegen generate
+name: PixelMark
+options:
+  bundleIdPrefix: dev.nearby
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: 4F2YLTHL8T
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+targets:
+  PixelMark:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/PixelMark
+      - path: Resources/AppIcon.icon
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: PixelMark
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nearby.PixelMark
+        INFOPLIST_FILE: Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/PixelMark.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_IDENTITY: "Apple Development"
+        ENABLE_APP_SANDBOX: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+  PixelMarkTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/PixelMarkTests
+    dependencies:
+      - target: PixelMark
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nearby.PixelMarkTests
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PixelMark.app/Contents/MacOS/PixelMark"
+schemes:
+  PixelMark:
+    build:
+      targets:
+        PixelMark: all
+    test:
+      targets:
+        - PixelMarkTests

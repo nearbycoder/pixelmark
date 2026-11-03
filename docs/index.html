@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PixelMark: measure anything on your screen</title>
+  <meta name="description" content="PixelMark is a free, open source screen ruler for macOS. Press ⇧⌘2 and hover to see distances to the nearest edges, drag a box that snaps to content, check spacing, add guides, pick colors and copy exact sizes in points or pixels.">
+  <meta name="theme-color" content="#0e0c24">
+  <link rel="icon" href="assets/icon-256.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="canonical" href="https://nearbycoder.github.io/pixelmark/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PixelMark">
+  <meta property="og:url" content="https://nearbycoder.github.io/pixelmark/">
+  <meta property="og:title" content="PixelMark: measure anything on your screen">
+  <meta property="og:description" content="A free, open source screen ruler for macOS. Hover to measure, drag to snap a box to content, ⌥ for spacing, and copy exact sizes in points or pixels.">
+  <meta property="og:image" content="https://nearbycoder.github.io/pixelmark/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The PixelMark icon and tagline beside a dashboard being measured, with a loupe and size labels">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PixelMark: measure anything on your screen">
+  <meta name="twitter:description" content="Free, open source screen ruler for macOS. Hover, drag, ⌥ for spacing, copy exact sizes.">
+  <meta name="twitter:image" content="https://nearbycoder.github.io/pixelmark/assets/og.png">
+  <style>
+    :root {
+      --bg: #0e0c24;
+      --text: #f5f4ff;
+      --muted: rgba(232, 230, 255, 0.68);
+      --faint: rgba(232, 230, 255, 0.45);
+      --pink: #ff3d7f;
+      --indigo: #5646eb;
+      --violet: #8b5cf6;
+      --line: rgba(255, 255, 255, 0.12);
+      --radius: 26px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+      --rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; color: var(--text); background: var(--bg); font-family: var(--font);
+      -webkit-font-smoothing: antialiased; line-height: 1.55; overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    ::selection { background: rgba(255, 61, 127, 0.35); }
+
+    /* Ambient background */
+    .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+      background: linear-gradient(165deg, #171140, #0e0c24 45%, #0a0a1c); }
+    .ambient::after { content: ""; position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1.3px); background-size: 28px 28px;
+      mask-image: linear-gradient(180deg, black, transparent 75%); -webkit-mask-image: linear-gradient(180deg, black, transparent 75%); }
+    .blob { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.5; animation: drift 28s ease-in-out infinite alternate; }
+    .blob.a { width: 640px; height: 640px; left: -200px; top: -200px; background: #c0266a; }
+    .blob.b { width: 760px; height: 760px; right: -260px; top: 18vh; background: #4b3bdc; animation-delay: -9s; }
+    .blob.c { width: 560px; height: 560px; left: 28vw; bottom: -300px; background: #7c3aed; opacity: 0.35; animation-delay: -15s; }
+    @keyframes drift { to { transform: translate(70px, 50px) scale(1.08); } }
+
+    .wrap { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+      border: 1px solid var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 24px 60px rgba(4, 3, 20, 0.4);
+      -webkit-backdrop-filter: blur(24px) saturate(170%);
+      backdrop-filter: blur(24px) saturate(170%);
+    }
+
+    /* Nav */
+    nav { position: sticky; top: 14px; z-index: 20; margin-top: 14px; }
+    .nav-inner { display: flex; align-items: center; gap: 16px; padding: 8px 8px 8px 14px; border-radius: 999px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: var(--rounded); font-weight: 700; font-size: 18px; }
+    .brand img { width: 30px; height: 30px; }
+    .nav-links { display: flex; gap: 4px; margin-left: auto; }
+    .nav-links a { padding: 8px 14px; border-radius: 999px; color: var(--muted); font-size: 14px; font-weight: 500; transition: background .2s, color .2s; }
+    .nav-links a:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 46px; padding: 0 22px;
+      border-radius: 999px; font-weight: 600; font-size: 15px; white-space: nowrap; transition: transform .2s, box-shadow .2s, background .2s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { color: white;
+      background: linear-gradient(135deg, #ff3d7f, #8b5cf6 60%, #5646eb);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 10px 30px rgba(255, 61, 127, 0.35); }
+    .btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 14px 40px rgba(255, 61, 127, 0.5); }
+    .btn.small { height: 38px; padding: 0 16px; font-size: 14px; }
+    .btn svg { width: 18px; height: 18px; flex: none; }
+
+    /* Hero */
+    .hero { text-align: center; padding: 84px 0 36px; }
+    .hero .icon { width: 132px; height: 132px; margin: 0 auto 26px; filter: drop-shadow(0 18px 40px rgba(86, 70, 235, 0.55)); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 22px; }
+    .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 10px #34d399; }
+    h1 { font-family: var(--rounded); font-size: clamp(44px, 7.4vw, 86px); line-height: 1.02; letter-spacing: -0.035em; margin: 0 auto 20px; max-width: 900px; }
+    h1 .grad { background: linear-gradient(100deg, #ff6aa0, #ff3d7f 30%, #a78bfa 70%, #7c6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 640px; margin: 0 auto 32px; }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .meta { margin-top: 18px; font-size: 13px; color: var(--faint); display: flex; gap: 8px 16px; justify-content: center; flex-wrap: wrap; }
+    .meta span { display: inline-flex; align-items: center; gap: 6px; }
+    kbd { font-family: var(--rounded); font-weight: 600; font-size: 0.86em; padding: 2px 8px; border-radius: 7px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 -1px 0 rgba(255,255,255,0.08); white-space: nowrap; }
+
+    /* Live demo */
+    .demo { margin-top: 56px; padding: 14px; border-radius: 34px; }
+    .demo-head { display: flex; align-items: center; gap: 12px; padding: 4px 8px 14px; flex-wrap: wrap; }
+    .demo-head strong { font-family: var(--rounded); font-size: 15px; }
+    .demo-head .hint { color: var(--faint); font-size: 13px; }
+    .demo-head .spacer { flex: 1; }
+    .chip-btn { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.06); color: var(--text); font: 600 12px var(--font); cursor: pointer; }
+    .chip-btn:hover { background: rgba(255,255,255,0.12); }
+    .stage { position: relative; border-radius: 22px; overflow: hidden; cursor: crosshair; user-select: none; -webkit-user-select: none; touch-action: none;
+      background: linear-gradient(135deg, #8f2a6b, #3b2a9e 55%, #1d2a6e); padding: 34px; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    /* The mock app being measured */
+    .mock { display: grid; grid-template-columns: 196px 1fr; background: #fff; border-radius: 16px; overflow: hidden; color: #171a29; box-shadow: 0 30px 60px rgba(0,0,0,0.35); min-height: 430px; }
+    .mock .side { background: #f8f8fb; border-right: 1px solid #e6e7ee; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .mock .lights { display: flex; gap: 7px; margin-bottom: 18px; }
+    .mock .lights i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+    .mock .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+    .mock .logo b { width: 26px; height: 26px; border-radius: 7px; background: #5c54f2; display: block; }
+    .mock .nav-item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; font-size: 13px; font-weight: 500; color: #6b7184; }
+    .mock .nav-item.on { background: #ecebfd; color: #5c54f2; font-weight: 600; }
+    .mock .nav-item i { width: 14px; height: 14px; border-radius: 4px; background: currentColor; opacity: 0.8; display: block; }
+    .mock .main { padding: 28px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+    .mock .top { display: flex; align-items: center; gap: 16px; }
+    .mock h3 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+    .mock .sub { margin: 4px 0 0; font-size: 13px; color: #6b7184; }
+    .mock .new { margin-left: auto; background: #5c54f2; color: white; font-weight: 600; font-size: 13px; height: 38px; padding: 0 18px; border-radius: 10px; display: flex; align-items: center; }
+    .mock .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .mock .stat { background: #f8f8fb; border-radius: 14px; padding: 16px; }
+    .mock .stat small { display: inline-block; font-size: 12px; color: #6b7184; font-weight: 500; }
+    .mock .stat strong { display: block; font-size: 28px; margin: 6px 0; }
+    .mock .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+    .mock .chart { border: 1px solid #e6e7ee; border-radius: 14px; padding: 18px; display: flex; align-items: flex-end; gap: 22px; height: 150px; justify-content: center; }
+    .mock .bar { width: 44px; border-radius: 7px; background: #dedcfc; }
+    .mock .bar.hot { background: #5c54f2; }
+
+    /* Sections */
+    section { padding: 96px 0 0; }
+    .section-head { text-align: center; max-width: 680px; margin: 0 auto 44px; }
+    .section-head h2 { font-family: var(--rounded); font-size: clamp(32px, 4.4vw, 50px); letter-spacing: -0.03em; line-height: 1.08; margin: 0 0 14px; }
+    .section-head p { color: var(--muted); font-size: 17px; margin: 0; }
+    .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink); margin-bottom: 12px; }
+
+    .shots { display: grid; gap: 26px; }
+    .shot { border-radius: var(--radius); padding: 12px; display: grid; grid-template-columns: 1.65fr 1fr; gap: 26px; align-items: center; }
+    .shot:nth-child(even) { grid-template-columns: 1fr 1.65fr; }
+    .shot:nth-child(even) .shot-img { order: 2; }
+    .shot-img { border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+    .shot-img img { width: 100%; height: auto; }
+    .shot-copy { padding: 18px 22px; }
+    .shot-copy h3 { font-family: var(--rounded); font-size: 26px; letter-spacing: -0.02em; margin: 0 0 10px; }
+    .shot-copy p { color: var(--muted); margin: 0 0 14px; }
+    .shot-copy .keys { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 14px; align-items: center; }
+
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .feature { border-radius: 22px; padding: 24px; }
+    .feature .ico { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 16px;
+      background: linear-gradient(135deg, rgba(255,61,127,0.9), rgba(86,70,235,0.9)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 20px rgba(255,61,127,0.25); }
+    .feature .ico svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .feature h3 { margin: 0 0 6px; font-size: 17px; font-family: var(--rounded); }
+    .feature p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    .keys-table { border-radius: var(--radius); padding: 10px 28px; display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 48px; }
+    .key-row { display: flex; align-items: center; gap: 16px; padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 15px; }
+    .key-row .k { flex: 0 0 120px; display: flex; gap: 5px; flex-wrap: wrap; }
+    .key-row span:last-child { color: var(--muted); }
+
+    .faq { max-width: 780px; margin: 0 auto; display: grid; gap: 12px; }
+    details { border-radius: 20px; padding: 0 22px; }
+    summary { cursor: pointer; list-style: none; padding: 19px 0; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; font-family: var(--rounded); font-size: 22px; line-height: 1; color: var(--pink); transition: transform .25s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { margin: 0 0 20px; color: var(--muted); }
+    details code { font-family: var(--mono); font-size: 0.9em; background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 6px; }
+
+    .final { margin: 110px 0 0; border-radius: 34px; padding: 60px 28px; text-align: center; position: relative; overflow: hidden; }
+    .final::before { content: ""; position: absolute; inset: -40%; background: radial-gradient(circle at 30% 30%, rgba(255,61,127,0.3), transparent 40%), radial-gradient(circle at 70% 70%, rgba(86,70,235,0.4), transparent 45%); z-index: -1; }
+    .final img { width: 96px; margin: 0 auto 18px; }
+    .final h2 { font-family: var(--rounded); font-size: clamp(32px, 4.6vw, 52px); letter-spacing: -0.03em; margin: 0 0 12px; }
+    .final p { color: var(--muted); margin: 0 auto 28px; max-width: 520px; }
+
+    footer { padding: 48px 0 56px; color: var(--faint); font-size: 14px; display: flex; gap: 16px; justify-content: space-between; flex-wrap: wrap; }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 920px) {
+      .shot, .shot:nth-child(even) { grid-template-columns: 1fr; }
+      .shot:nth-child(even) .shot-img { order: 0; }
+      .features { grid-template-columns: repeat(2, 1fr); }
+      .keys-table { grid-template-columns: 1fr; }
+      .mock { grid-template-columns: 1fr; }
+      .mock .side { display: none; }
+    }
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .nav-inner .btn { margin-left: auto; }
+      .features { grid-template-columns: 1fr; }
+      .stage { padding: 14px; }
+      .mock .main { padding: 18px; }
+      .mock .stats { grid-template-columns: 1fr 1fr; }
+      .mock .stat:nth-child(3) { display: none; }
+      .mock .chart { gap: 10px; }
+      .mock .bar { width: 26px; }
+      .mock .new { display: none; }
+      .demo-head .hint { display: none; }
+      .keys-table { padding: 6px 18px; }
+      .key-row .k { flex-basis: 96px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .blob { animation: none; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><div class="blob a"></div><div class="blob b"></div><div class="blob c"></div></div>
+
+  <div class="wrap">
+    <nav>
+      <div class="nav-inner glass">
+        <a class="brand" href="#top"><img src="assets/icon-256.png" alt="">PixelMark</a>
+        <div class="nav-links">
+          <a href="#try">Try it</a>
+          <a href="#features">Features</a>
+          <a href="#shortcuts">Shortcuts</a>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/nearbycoder/pixelmark">GitHub</a>
+        </div>
+        <a class="btn primary small" href="https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg">Download</a>
+      </div>
+    </nav>
+
+    <header class="hero" id="top">
+      <img class="icon" src="assets/icon-512.png" alt="PixelMark app icon" width="132" height="132">
+      <div class="eyebrow glass"><span class="dot"></span>Free and open source · v1.0</div>
+      <h1>Measure <span class="grad">anything</span> on&nbsp;your&nbsp;screen.</h1>
+      <p class="lede">Press <kbd>⇧⌘2</kbd> and hover. PixelMark finds the edges around your pointer and shows exact sizes in points or pixels. Drag a box and it snaps to the content inside.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.65zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z"/></svg>
+          Download for Mac
+        </a>
+        <a class="btn glass" href="https://github.com/nearbycoder/pixelmark">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+          View source
+        </a>
+      </div>
+      <div class="meta">
+        <span>macOS 26 Tahoe or later</span><span>·</span>
+        <span>Signed and notarized by Apple</span><span>·</span>
+        <span>MIT License</span>
+      </div>
+    </header>
+
+    <div class="demo glass reveal" id="try">
+      <div class="demo-head">
+        <strong>Try it right here</strong>
+        <span class="hint">Hover to measure · drag to box · click to pin</span>
+        <span class="spacer"></span>
+        <button class="chip-btn" id="clear" type="button">Clear</button>
+      </div>
+      <div class="stage" id="stage" aria-label="Interactive measuring demo">
+        <div class="mock m" data-m>
+          <aside class="side m" data-m>
+            <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+            <div class="logo"><b data-m></b><span data-m>Orbit</span></div>
+            <div class="nav-item on" data-m><i></i>Overview</div>
+            <div class="nav-item" data-m><i></i>Projects</div>
+            <div class="nav-item" data-m><i></i>Team</div>
+            <div class="nav-item" data-m><i></i>Reports</div>
+          </aside>
+          <div class="main">
+            <div class="top">
+              <div><h3><span data-m>Good morning, Ava</span></h3><p class="sub"><span data-m>Here’s what’s happening today.</span></p></div>
+              <div class="new" data-m>New Project</div>
+            </div>
+            <div class="stats">
+              <div class="stat" data-m><small data-m>Active projects</small><strong><span data-m>24</span></strong><span class="pill" data-m style="background:#e3f7ea;color:#1f9d55">+3 this week</span></div>
+              <div class="stat" data-m><small data-m>Open tasks</small><strong><span data-m>128</span></strong><span class="pill" data-m style="background:#fff0e1;color:#e07a10">12 due today</span></div>
+              <div class="stat" data-m><small data-m>Velocity</small><strong><span data-m>92%</span></strong><span class="pill" data-m style="background:#ecebfd;color:#5c54f2">+8%</span></div>
+            </div>
+            <div class="chart" data-m>
+              <div class="bar" data-m style="height:45%"></div><div class="bar" data-m style="height:70%"></div><div class="bar" data-m style="height:55%"></div>
+              <div class="bar hot" data-m style="height:92%"></div><div class="bar" data-m style="height:62%"></div><div class="bar" data-m style="height:38%"></div><div class="bar" data-m style="height:75%"></div>
+            </div>
+          </div>
+        </div>
+        <canvas id="overlay" aria-hidden="true"></canvas>
+      </div>
+    </div>
+
+    <section id="features">
+      <div class="section-head reveal">
+        <div class="kicker">How it works</div>
+        <h2>One shortcut. Every dimension.</h2>
+        <p>PixelMark freezes your screen for a moment and reads its pixels, so it measures anything: websites, apps, designs, images and video.</p>
+      </div>
+
+      <div class="shots">
+        <div class="shot glass reveal">
+          <div class="shot-img"><img src="assets/shot-measure.jpg" alt="PixelMark measuring a bar in a chart at 64 by 189 points, with a loupe showing the color #5C54F2 and a box around a button labeled 140 by 44" loading="lazy" width="1260" height="900"></div>
+          <div class="shot-copy">
+            <h3>Hover to measure</h3>
+            <p>Lines run from your pointer to the nearest edge in every direction, with the size right beside it. The loupe shows the pixels underneath and their color.</p>
+            <div class="keys"><kbd>Drag</kbd> box that snaps to content <kbd>C</kbd> copy color</div>
+          </div>
+        </div>
+        <div class="shot glass reveal">
+          <div class="shot-img"><img src="assets/shot-spacing.jpg" alt="Three stat cards boxed, with dashed lines showing 24 point gaps between them and the margins around the hovered card" loading="lazy" width="1260" height="900"></div>
+          <div class="shot-copy">
+            <h3>Hold ⌥ for spacing</h3>
+            <p>Point at a box and hold Option to see the gap to its neighbors, or to the next edge on screen. Boxes that line up get alignment lines automatically.</p>
+            <div class="keys"><kbd>⌥</kbd> spacing <kbd>⌫</kbd> remove</div>
+          </div>
+        </div>
+        <div class="shot glass reveal">
+          <div class="shot-img"><img src="assets/shot-guides.jpg" alt="Horizontal and vertical guides across the screen with their positions and the distance between them" loading="lazy" width="1260" height="900"></div>
+          <div class="shot-copy">
+            <h3>Guides and pins</h3>
+            <p>Drop guides with <kbd>H</kbd> and <kbd>V</kbd> to check alignment across the screen. Click to pin a measurement, then keep going.</p>
+            <div class="keys"><kbd>⌘S</kbd> screenshot with every mark</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="features" style="margin-top: 26px;">
+        <div class="feature glass reveal">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><path d="M9 12h6"/></svg></div>
+          <h3>Smart edge detection</h3>
+          <p>Adjustable tolerance skips shadows and anti-aliasing, or stops at a single 1&nbsp;px border. Change it live with <kbd>[</kbd> <kbd>]</kbd>.</p>
+        </div>
+        <div class="feature glass reveal">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></div>
+          <h3>Copy in your format</h3>
+          <p><kbd>⌘C</kbd> copies <code style="font-family:var(--mono)">320 × 48</code>, CSS width and height, or a SwiftUI <code style="font-family:var(--mono)">.frame</code>.</p>
+        </div>
+        <div class="feature glass reveal">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/><path d="M7 4v16M17 4v16" opacity=".5"/></svg></div>
+          <h3>Points or pixels</h3>
+          <p>Points match your design files. Pixels are the real device pixels on a Retina display. Press <kbd>U</kbd> to switch.</p>
+        </div>
+        <div class="feature glass reveal">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="13" height="10" rx="2"/><rect x="17" y="8" width="5" height="12" rx="1.5"/><path d="M6 20h6M9 14v6"/></svg></div>
+          <h3>Every display</h3>
+          <p>Measures across all your screens at their native resolution, over full-screen apps and every Space.</p>
+        </div>
+        <div class="feature glass reveal">
+          <div class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg></div>
+          <h3>Pixel-precise</h3>
+          <p>Arrow keys nudge the pointer by one pixel (<kbd>⇧</kbd> for ten), so you land exactly where you mean to.</p>
+        </div>
+        <div class="feature glass reveal">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v6c0 4-3 7-7 8-4-1-7-4-7-8V7z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Private by design</h3>
+          <p>No account, no analytics, no network. The screenshot stays in memory and is gone when you press <kbd>Esc</kbd>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="shortcuts">
+      <div class="section-head reveal">
+        <div class="kicker">Shortcuts</div>
+        <h2>Your hands stay on the keys.</h2>
+        <p>Press <kbd>?</kbd> while measuring to see these any time.</p>
+      </div>
+      <div class="keys-table glass reveal">
+        <div class="key-row"><span class="k"><kbd>⇧⌘2</kbd></span><span>Start measuring (from any app)</span></div>
+        <div class="key-row"><span class="k"><kbd>Drag</kbd></span><span>Box that snaps to the content inside</span></div>
+        <div class="key-row"><span class="k"><kbd>⇧</kbd><kbd>Drag</kbd></span><span>Free box, no snapping</span></div>
+        <div class="key-row"><span class="k"><kbd>Click</kbd></span><span>Pin the current measurement</span></div>
+        <div class="key-row"><span class="k"><kbd>⌥</kbd></span><span>Spacing around the hovered box</span></div>
+        <div class="key-row"><span class="k"><kbd>H</kbd><kbd>V</kbd></span><span>Horizontal or vertical guide</span></div>
+        <div class="key-row"><span class="k"><kbd>⌘C</kbd></span><span>Copy dimensions</span></div>
+        <div class="key-row"><span class="k"><kbd>C</kbd></span><span>Copy the color under the pointer</span></div>
+        <div class="key-row"><span class="k"><kbd>⌘S</kbd></span><span>Screenshot with measurements (<kbd>⇧⌘S</kbd> crops)</span></div>
+        <div class="key-row"><span class="k"><kbd>[</kbd><kbd>]</kbd></span><span>Edge tolerance</span></div>
+        <div class="key-row"><span class="k"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></span><span>Nudge one pixel</span></div>
+        <div class="key-row"><span class="k"><kbd>Esc</kbd></span><span>Done</span></div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="section-head reveal">
+        <div class="kicker">FAQ</div>
+        <h2>Good questions.</h2>
+      </div>
+      <div class="faq">
+        <details class="glass reveal">
+          <summary>Why does PixelMark need Screen Recording permission?</summary>
+          <p>To find edges it has to see the pixels on screen. When you press the shortcut, PixelMark takes one still image of each display, measures against it, and throws it away when you're done. Nothing is recorded, saved or sent anywhere unless you press <kbd>⌘S</kbd>.</p>
+        </details>
+        <details class="glass reveal">
+          <summary>Is it really free?</summary>
+          <p>Yes. PixelMark is open source under the MIT License, with no trial, account or upsell. If it saves you time, a star on GitHub is appreciated.</p>
+        </details>
+        <details class="glass reveal">
+          <summary>How is it different from PixelSnap?</summary>
+          <p>PixelSnap inspired it, and it's a great app. PixelMark covers the same core workflow (edge measuring, snapping boxes, spacing, guides and screenshots), adds a loupe with color picking and copy formats for CSS and SwiftUI, and is free to use and change.</p>
+        </details>
+        <details class="glass reveal">
+          <summary>Which Macs does it run on?</summary>
+          <p>Any Mac running macOS 26 Tahoe or later. The app is built for Apple silicon and Intel, and it's signed with a Developer ID and notarized by Apple, so it opens without warnings.</p>
+        </details>
+        <details class="glass reveal">
+          <summary>A measurement stops too early, or skips past an edge.</summary>
+          <p>That's the edge tolerance. Press <kbd>]</kbd> to raise it so subtle shadows and gradients are ignored, or <kbd>[</kbd> to lower it so even a faint border counts. The default (12) works for most interfaces.</p>
+        </details>
+        <details class="glass reveal">
+          <summary>Can I build it myself?</summary>
+          <p>Clone the repo, run <code>brew install xcodegen</code> and <code>xcodegen generate</code>, then open <code>PixelMark.xcodeproj</code> in Xcode 26 or later and press Run.</p>
+        </details>
+      </div>
+    </section>
+
+    <div class="final glass reveal">
+      <img src="assets/icon-256.png" alt="">
+      <h2>Stop guessing. Start measuring.</h2>
+      <p>Free, open source, and ready in your menu bar a few seconds after you download it.</p>
+      <a class="btn primary" href="https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg">Download PixelMark</a>
+    </div>
+
+    <footer>
+      <span>© 2026 Josh Hamilton · MIT License · Inspired by PixelSnap</span>
+      <span><a href="https://github.com/nearbycoder/pixelmark">GitHub</a> · <a href="https://github.com/nearbycoder/pixelmark/releases">Releases</a> · <a href="https://github.com/nearbycoder/pixelmark/issues">Report an issue</a></span>
+    </footer>
+  </div>
+
+  <script>
+  (() => {
+    // Reveal-on-scroll.
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // Live measuring demo: the same idea as the app, using element boxes instead of pixels.
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+    const accent = '#ff3d7f';
+    let size = { w: 0, h: 0 }, rects = [], pointer = null, drag = null, boxes = [], pins = [];
+
+    function layout() {
+      const dpr = window.devicePixelRatio || 1;
+      const r = stage.getBoundingClientRect();
+      size = { w: r.width, h: r.height };
+      canvas.width = Math.round(r.width * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rects = [...stage.querySelectorAll('[data-m]')].map(el => {
+        const b = el.getBoundingClientRect();
+        return { x: b.left - r.left, y: b.top - r.top, w: b.width, h: b.height };
+      }).filter(b => b.w > 0 && b.h > 0);
+      draw();
+    }
+
+    const inside = (p, b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
+
+    // Nearest edge in each direction: the innermost boxes around the point, or boxes beside it.
+    function measure(p) {
+      let left = 0, right = size.w, top = 0, bottom = size.h;
+      for (const b of rects) {
+        const bx2 = b.x + b.w, by2 = b.y + b.h;
+        if (inside(p, b)) {
+          left = Math.max(left, b.x); right = Math.min(right, bx2);
+          top = Math.max(top, b.y); bottom = Math.min(bottom, by2);
+          continue;
+        }
+        if (p.y >= b.y && p.y <= by2) {
+          if (bx2 <= p.x) left = Math.max(left, bx2);
+          if (b.x >= p.x) right = Math.min(right, b.x);
+        }
+        if (p.x >= b.x && p.x <= bx2) {
+          if (by2 <= p.y) top = Math.max(top, by2);
+          if (b.y >= p.y) bottom = Math.min(bottom, b.y);
+        }
+      }
+      return { p, left, right, top, bottom };
+    }
+
+    function snap(r) {
+      const inner = rects.filter(b => b.x >= r.x && b.y >= r.y && b.x + b.w <= r.x + r.w && b.y + b.h <= r.y + r.h);
+      if (!inner.length) return r;
+      const x = Math.min(...inner.map(b => b.x)), y = Math.min(...inner.map(b => b.y));
+      const x2 = Math.max(...inner.map(b => b.x + b.w)), y2 = Math.max(...inner.map(b => b.y + b.h));
+      return { x, y, w: x2 - x, h: y2 - y };
+    }
+
+    const fmt = n => String(Math.round(n));
+
+    function pill(text, x, y, dark) {
+      ctx.font = '600 11.5px ui-monospace, "SF Mono", Menlo, monospace';
+      const w = ctx.measureText(text).width + 14, h = 21;
+      x = Math.max(4, Math.min(x, size.w - w - 4)); y = Math.max(4, Math.min(y, size.h - h - 4));
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1.5;
+      ctx.fillStyle = dark ? 'rgba(18,16,34,0.9)' : accent;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 5.5); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'white'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, x + 7, y + h / 2 + 0.5);
+      return { w, h };
+    }
+
+    function cross(m, pinned) {
+      const { p, left, right, top, bottom } = m;
+      const y = Math.round(p.y) + 0.5, x = Math.round(p.x) + 0.5, cap = 4.5;
+      ctx.strokeStyle = accent; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(left, y); ctx.lineTo(right, y);
+      ctx.moveTo(left + 0.5, y - cap); ctx.lineTo(left + 0.5, y + cap);
+      ctx.moveTo(right - 0.5, y - cap); ctx.lineTo(right - 0.5, y + cap);
+      ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+      ctx.moveTo(x - cap, top + 0.5); ctx.lineTo(x + cap, top + 0.5);
+      ctx.moveTo(x - cap, bottom - 0.5); ctx.lineTo(x + cap, bottom - 0.5);
+      ctx.stroke();
+      if (pinned) { ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill(); }
+      const text = `${fmt(right - left)} × ${fmt(bottom - top)}`;
+      const flipX = p.x > size.w - 120, flipY = p.y > size.h - 50;
+      pill(text, flipX ? p.x - 110 : p.x + 14, flipY ? p.y - 36 : p.y + 16);
+    }
+
+    function box(r, strong) {
+      ctx.fillStyle = strong ? 'rgba(255,61,127,0.2)' : 'rgba(255,61,127,0.12)';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = accent; ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(r.x) + 0.5, Math.round(r.y) + 0.5, Math.round(r.w) - 1, Math.round(r.h) - 1);
+      const text = `${fmt(r.w)} × ${fmt(r.h)}`;
+      ctx.font = '600 11.5px ui-monospace, "SF Mono", Menlo, monospace';
+      const w = ctx.measureText(text).width + 14;
+      const below = r.y + r.h + 6 + 21 < size.h;
+      pill(text, r.x + r.w / 2 - w / 2, below ? r.y + r.h + 6 : r.y - 27);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, size.w, size.h);
+      boxes.forEach(b => box(b, pointer && inside(pointer, b)));
+      pins.forEach(m => cross(m, true));
+      if (drag && drag.moved) {
+        const r = dragRect();
+        ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(255,61,127,0.6)';
+        ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h); ctx.restore();
+        box(drag.free ? r : snap(r), true);
+      } else if (pointer) {
+        cross(measure(pointer), false);
+      }
+    }
+
+    function dragRect() {
+      const x = Math.min(drag.x, drag.x2), y = Math.min(drag.y, drag.y2);
+      return { x, y, w: Math.abs(drag.x2 - drag.x), h: Math.abs(drag.y2 - drag.y) };
+    }
+
+    const point = e => { const r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+
+    stage.addEventListener('pointermove', e => {
+      pointer = point(e);
+      if (drag) { drag.x2 = pointer.x; drag.y2 = pointer.y; drag.free = e.shiftKey; if (Math.hypot(drag.x2 - drag.x, drag.y2 - drag.y) > 4) drag.moved = true; }
+      draw();
+    });
+    stage.addEventListener('pointerleave', () => { if (!drag) { pointer = null; draw(); } });
+    stage.addEventListener('pointerdown', e => {
+      const p = point(e); pointer = p;
+      drag = { x: p.x, y: p.y, x2: p.x, y2: p.y, moved: false, free: e.shiftKey };
+      stage.setPointerCapture(e.pointerId);
+      draw();
+    });
+    stage.addEventListener('pointerup', e => {
+      if (!drag) return;
+      if (drag.moved) {
+        const r = dragRect();
+        boxes.push(drag.free ? r : snap(r));
+      } else {
+        pins.push(measure(point(e)));
+      }
+      if (boxes.length + pins.length > 8) { boxes.length ? boxes.shift() : pins.shift(); }
+      drag = null;
+      if (e.pointerType !== 'mouse') pointer = null;
+      draw();
+    });
+    document.getElementById('clear').addEventListener('click', () => { boxes = []; pins = []; draw(); });
+    window.addEventListener('keydown', e => { if (e.key === 'Escape') { boxes = []; pins = []; draw(); } });
+
+    new ResizeObserver(layout).observe(stage);
+    document.fonts && document.fonts.ready.then(layout);
+    layout();
+  })();
+  </script>
+</body>
+</html>
