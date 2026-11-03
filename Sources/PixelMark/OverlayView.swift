@@ -20,6 +20,14 @@ final class OverlayView: NSView {
 
     private enum Mark { case box, pin, guide }
 
+    #if DEBUG
+    /// The demo video draws its own pointer, since recordings leave the real one out.
+    var showsDemoCursor = false
+    /// Shows just the desktop and pointer, as before the shortcut is pressed.
+    var demoHidesMarks = false { didSet { needsDisplay = true } }
+    fileprivate var demoPress: (point: CGPoint, time: Date)?
+    #endif
+
     private var settings: AppSettings { .shared }
     private var scale: CGFloat { snapshot.scale }
     private var buffer: PixelBuffer { snapshot.buffer }
@@ -189,7 +197,12 @@ final class OverlayView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
+        #if DEBUG
+        if !demoHidesMarks { OverlayRenderer.draw(scene()) }
+        drawDemoCursor()
+        #else
         OverlayRenderer.draw(scene())
+        #endif
     }
 
     /// The screenshot with every measurement drawn on it, optionally cropped to the measured area.
@@ -360,8 +373,10 @@ final class OverlayView: NSView {
         let target = pixelCenter((min(max(p.x + dx, 0), buffer.width - 1), min(max(p.y + dy, 0), buffer.height - 1)))
         let primaryHeight = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
         let global = CGPoint(x: screen.frame.minX + target.x, y: primaryHeight - (screen.frame.maxY - target.y))
-        CGWarpMouseCursorPosition(global)
-        CGAssociateMouseAndMouseCursorPosition(1)
+        if !AppCoordinator.isHarness {
+            CGWarpMouseCursorPosition(global)
+            CGAssociateMouseAndMouseCursorPosition(1)
+        }
         self.cursor = target
         session?.pointerMoved(in: self)
         needsDisplay = true
@@ -371,6 +386,31 @@ final class OverlayView: NSView {
 #if DEBUG
 /// Drives the overlay from a script for screenshots and visual checks (see `Harness`).
 extension OverlayView {
+    /// A ring that fades out where the demo clicks.
+    func showDemoPress(at point: CGPoint) {
+        demoPress = (point, Date())
+        needsDisplay = true
+    }
+
+    fileprivate func drawDemoCursor() {
+        guard showsDemoCursor, let cursor, let ctx = NSGraphicsContext.current?.cgContext else { return }
+        if let press = demoPress {
+            let t = Date().timeIntervalSince(press.time) / 0.45
+            if t < 1 {
+                let radius = 8 + 16 * t
+                ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.9 * (1 - t)).cgColor)
+                ctx.setLineWidth(2)
+                ctx.strokeEllipse(in: CGRect(x: press.point.x - radius, y: press.point.y - radius, width: radius * 2, height: radius * 2))
+            }
+        }
+        // Before measuring starts it's the arrow; afterwards the crosshair. Drawn larger so it reads on video.
+        let pointer: NSCursor = demoHidesMarks ? .arrow : .crosshair
+        let zoom: CGFloat = 1.5
+        let size = CGSize(width: pointer.image.size.width * zoom, height: pointer.image.size.height * zoom)
+        let origin = CGPoint(x: cursor.x - pointer.hotSpot.x * zoom, y: cursor.y - pointer.hotSpot.y * zoom)
+        pointer.image.draw(in: CGRect(origin: origin, size: size), from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+    }
+
     func simulateMove(to point: CGPoint, flags: NSEvent.ModifierFlags = []) {
         cursor = point
         showSpacing = flags.contains(.option)

@@ -181,15 +181,13 @@ final class MeasureSession {
         let width = OverlayScene.format(size.width, scale: scale, unit: settings.unit)
         let height = OverlayScene.format(size.height, scale: scale, unit: settings.unit)
         let text = settings.copyFormat.format(width: width, height: height)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        Self.copy(text)
         hud.showToast("Copied \(width) × \(height) \(settings.unit.suffix)", symbol: "doc.on.doc.fill")
     }
 
     private func copyColor(from overlay: OverlayView) {
         guard let hex = overlay.colorUnderCursor else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(hex, forType: .string)
+        Self.copy(hex)
         hud.showToast("Copied \(hex)", symbol: "eyedropper.halffull")
     }
 
@@ -201,17 +199,21 @@ final class MeasureSession {
         let scale = overlay.snapshot.scale
         var done: [String] = []
 
+        // Scripted runs show the feedback without touching the clipboard or the disk.
+        let isRehearsal = AppCoordinator.isHarness
         if settings.copyScreenshot {
-            let nsImage = NSImage(cgImage: image, size: NSSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale))
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.writeObjects([nsImage])
+            if !isRehearsal {
+                let nsImage = NSImage(cgImage: image, size: NSSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale))
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.writeObjects([nsImage])
+            }
             done.append("copied")
         }
         if settings.saveScreenshot {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
             let url = settings.saveFolder.appendingPathComponent("PixelMark \(formatter.string(from: Date())).png")
-            if Self.writePNG(image, to: url, scale: scale) {
+            if isRehearsal || Self.writePNG(image, to: url, scale: scale) {
                 done.append("saved to \(settings.saveFolder.lastPathComponent)")
             }
         }
@@ -219,8 +221,14 @@ final class MeasureSession {
             hud.showToast("Turn on copying or saving in Settings", symbol: "exclamationmark.triangle.fill")
             return
         }
-        NSSound(named: "Tink")?.play()
+        if !isRehearsal { NSSound(named: "Tink")?.play() }
         hud.showToast("Screenshot " + done.joined(separator: " and "), symbol: "camera.fill")
+    }
+
+    private static func copy(_ text: String) {
+        guard !AppCoordinator.isHarness else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     /// Writes a PNG tagged with the display's DPI so it opens at its real size.

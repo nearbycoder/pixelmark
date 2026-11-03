@@ -4,7 +4,7 @@
 
 A free, open source screen ruler for macOS. Press **⇧⌘2**, hover, and PixelMark shows the distance to the nearest edges in every direction. Drag a box and it snaps to the content inside. Inspired by [PixelSnap](https://pixelsnap.com).
 
-**[Download PixelMark](https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg)** · [Website](https://nearbycoder.github.io/pixelmark/) · requires macOS 26 Tahoe or later · signed with a Developer ID and notarized by Apple
+**[Download PixelMark](https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg)** · [Website](https://nearbycoder.github.io/pixelmark/) · [Watch the one-minute tour](https://nearbycoder.github.io/pixelmark/#tour) · requires macOS 26 Tahoe or later · signed with a Developer ID and notarized by Apple
 
 ## Features
 
@@ -49,7 +49,7 @@ Run the tests with `xcodebuild test -project PixelMark.xcodeproj -scheme PixelMa
 
 `./Scripts/release.sh` archives, signs with Developer ID, notarizes and packages a DMG; `./Scripts/release.sh publish` also tags the version and creates a GitHub release. Bump the version in `Resources/Info.plist` first.
 
-Debug builds can drive the overlay from a script for screenshots, without covering your screen: `./Scripts/shoot.sh <backdrop.png> <out.png> "drag 100 100 300 200; option 150 150"`. `Scripts/make-demo-backdrop.swift` renders the mock desktop used on the website.
+Debug builds can drive the overlay from a script for screenshots, without covering your screen: `./Scripts/shoot.sh <backdrop.png> <out.png> "drag 100 100 300 200; option 150 150"`. `Scripts/make-demo-backdrop.swift` renders the mock desktop used on the website, and `./Scripts/record-demo.sh` records the feature tour video (`docs/assets/demo.mp4`) the same way.
 
 ## License
 

@@ -24,10 +24,18 @@ enum Harness {
         }
     }
 
+    private static var video: DemoVideo?
+
     static func run(_ script: String, session: MeasureSession, overlay: OverlayView, windows: [NSWindow]) {
         for window in windows {
             window.level = .normal
             window.orderBack(nil)
+        }
+        if script.hasPrefix("video:") {
+            let video = DemoVideo(session: session, overlay: overlay)
+            video.run(to: URL(fileURLWithPath: String(script.dropFirst("video:".count))))
+            self.video = video
+            return
         }
         for command in script.split(separator: ";") {
             let parts = command.split(separator: " ").map(String.init)

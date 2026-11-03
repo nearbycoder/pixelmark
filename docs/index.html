@@ -6,8 +6,8 @@
   <title>PixelMark: a screen ruler for macOS</title>
   <meta name="description" content="PixelMark is a free, open source screen ruler for macOS. Press ⇧⌘2, hover to see the distance to the nearest edges, drag a box that snaps to content, and copy exact sizes in points or pixels.">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121214" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f6f3ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17161a" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="assets/icon-256.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="canonical" href="https://nearbycoder.github.io/pixelmark/">
@@ -21,78 +21,93 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="The PixelMark icon beside a dashboard being measured, with a loupe and size labels">
+  <meta property="og:video" content="https://nearbycoder.github.io/pixelmark/assets/demo.mp4">
+  <meta property="og:video:type" content="video/mp4">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://nearbycoder.github.io/pixelmark/assets/og.png">
   <style>
     :root {
-      --bg: #fafaf9;
-      --ink: #19191b;
-      --muted: #6a6a70;
-      --line: #e4e4e1;
-      --soft: #f1f1ef;
-      --mark: #ff2d6f;
-      --stage: #d7dade;
-      --button: #19191b;
-      --button-ink: #ffffff;
+      --bg: #f6f3ee;
+      --surface: #fffdfa;
+      --ink: #26241f;
+      --muted: #6d685f;
+      --line: #e6e0d6;
+      --kbd: #efebe4;
+      --mark: #f2336f;
+      --button: #26241f;
+      --button-ink: #fffdfa;
+      --wall: linear-gradient(155deg, #c7d3e4 0%, #dcd6e2 45%, #efdccd 100%);
+      --shadow: 0 1px 2px rgba(60, 45, 20, 0.06), 0 12px 32px rgba(60, 45, 20, 0.08);
       --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #121214;
-        --ink: #ececee;
-        --muted: #9a9aa1;
-        --line: #2a2a2e;
-        --soft: #1b1b1e;
-        --stage: #2b2e34;
-        --button: #ececee;
-        --button-ink: #121214;
+        --bg: #17161a;
+        --surface: #1f1e23;
+        --ink: #edebe7;
+        --muted: #a6a29a;
+        --line: #2e2c32;
+        --kbd: #29272d;
+        --button: #edebe7;
+        --button-ink: #17161a;
+        --wall: linear-gradient(155deg, #2b3341 0%, #322e3d 50%, #3d3132 100%);
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
       }
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
     a { color: inherit; }
-    img { display: block; max-width: 100%; height: auto; }
-    .wrap { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
+    img, video { display: block; max-width: 100%; }
+    .wrap { width: min(1100px, calc(100% - 40px)); margin: 0 auto; }
 
-    header.top { border-bottom: 1px solid var(--line); }
-    header.top .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
-    .brand { display: flex; align-items: center; gap: 9px; font-weight: 600; text-decoration: none; }
-    .brand img { width: 24px; height: 24px; }
-    header.top nav { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
+    /* Header */
+    header.top .wrap { display: flex; align-items: center; gap: 28px; height: 68px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+    .brand img { width: 28px; height: 28px; }
+    header.top nav { display: flex; gap: 24px; margin-left: auto; font-size: 15px; }
     header.top nav a { color: var(--muted); text-decoration: none; }
     header.top nav a:hover { color: var(--ink); }
 
-    .button { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 8px;
-      background: var(--button); color: var(--button-ink); font-weight: 500; font-size: 15px; text-decoration: none; }
-    .button:hover { opacity: 0.86; }
-    .button svg { width: 16px; height: 16px; }
-    .button.small { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 7px; }
+    .button { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 10px;
+      background: var(--button); color: var(--button-ink); font-weight: 500; font-size: 16px; text-decoration: none; transition: transform .15s ease; }
+    .button:hover { transform: translateY(-1px); }
+    .button svg { width: 17px; height: 17px; }
+    .button.small { height: 34px; padding: 0 14px; font-size: 14px; border-radius: 8px; }
 
-    .hero { padding: 88px 0 48px; }
-    .hero p.kicker { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
-    h1 { font-size: clamp(40px, 6vw, 64px); line-height: 1.04; letter-spacing: -0.03em; font-weight: 600; margin: 0 0 20px; max-width: 760px; text-wrap: balance; }
-    .hero p.lede { font-size: 19px; color: var(--muted); max-width: 600px; margin: 0 0 32px; }
-    .actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-    .actions .link { font-size: 15px; color: var(--muted); text-decoration: none; }
+    /* Hero */
+    .hero { text-align: center; padding: 64px 0 44px; }
+    .hero .icon { width: 96px; height: 96px; margin: 0 auto 22px; }
+    h1 { font-size: clamp(40px, 6vw, 62px); line-height: 1.05; letter-spacing: -0.03em; font-weight: 600; margin: 0 auto 18px; max-width: 760px; text-wrap: balance; }
+    h1 span { display: block; color: var(--muted); }
+    .lede { font-size: 20px; color: var(--muted); max-width: 600px; margin: 0 auto 30px; text-wrap: pretty; }
+    .actions { display: flex; justify-content: center; align-items: center; gap: 22px; flex-wrap: wrap; }
+    .actions .link { color: var(--muted); text-decoration: none; }
     .actions .link:hover { color: var(--ink); }
-    .fine { margin-top: 18px; font-size: 13px; color: var(--muted); }
-    kbd { font: 500 0.85em var(--font); padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--soft); white-space: nowrap; }
+    .fine { margin-top: 16px; font-size: 14px; color: var(--muted); }
+    kbd { font: 500 0.84em var(--font); padding: 1px 7px; border-radius: 6px; background: var(--kbd); border: 1px solid var(--line); white-space: nowrap; }
 
-    /* Live demo, with a spec-drawing dimension line showing its own width. */
-    .demo { margin: 8px 0 0; }
-    .dimension { position: relative; height: 26px; margin-bottom: 6px; color: var(--mark); font: 500 12px var(--mono); }
-    .dimension::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 1px; background: var(--mark); }
-    .dimension i { position: absolute; top: 6px; width: 1px; height: 13px; background: var(--mark); }
-    .dimension i:first-child { left: 0; } .dimension i:last-child { right: 0; }
-    .dimension span { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); background: var(--bg); padding: 0 8px; }
-    .stage { position: relative; border-radius: 12px; background: var(--stage); padding: 32px; overflow: hidden; cursor: crosshair;
-      user-select: none; -webkit-user-select: none; touch-action: none; }
+    /* The soft backdrop behind the video and the demo */
+    .wall { background: var(--wall); border-radius: 22px; padding: clamp(14px, 3.4vw, 40px); }
+
+    /* Video */
+    .tour .frame { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); background: #2a2d33; }
+    .tour video { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+    .chapters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+    .chapters button { font: 500 14px var(--font); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+      padding: 6px 13px; cursor: pointer; display: inline-flex; gap: 7px; align-items: center; transition: border-color .15s, background .15s; }
+    .chapters button:hover { border-color: var(--muted); }
+    .chapters button.on { background: var(--button); color: var(--button-ink); border-color: var(--button); }
+    .chapters time { font: 12px var(--mono); opacity: 0.6; }
+
+    /* Live demo */
+    .stage { position: relative; cursor: crosshair; user-select: none; -webkit-user-select: none; touch-action: none; }
     .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    .demo-caption { display: flex; justify-content: space-between; gap: 16px; margin-top: 12px; font-size: 14px; color: var(--muted); }
-    .demo-caption button { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; cursor: pointer; }
+    .demo-caption { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 15px; color: var(--muted); }
+    .demo-caption button { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
-    .mock { display: grid; grid-template-columns: 190px 1fr; background: #fff; border-radius: 10px; overflow: hidden; color: #18181b; box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 18px 40px rgba(0,0,0,0.16); }
+    .mock { display: grid; grid-template-columns: 190px 1fr; background: #fff; border-radius: 12px; overflow: hidden; color: #18181b; box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 20px 44px rgba(40,30,60,0.18); }
     .mock .side { background: #f7f7f8; border-right: 1px solid #e7e7ea; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
     .mock .lights { display: flex; gap: 7px; margin-bottom: 18px; }
     .mock .lights i { width: 11px; height: 11px; border-radius: 50%; display: block; }
@@ -102,11 +117,11 @@
     .mock .nav-item.on { background: #ebeafc; color: #4a43d6; font-weight: 500; }
     .mock .main { padding: 26px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
     .mock .row { display: flex; align-items: center; gap: 16px; }
-    .mock h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
-    .mock .sub { margin: 3px 0 0; font-size: 13px; color: #6b6b74; }
+    .mock h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+    .mock .sub { margin: 3px 0 0; font-size: 13px; color: #6b6b74; line-height: 1.4; }
     .mock .new { margin-left: auto; background: #5b54e8; color: #fff; font-weight: 500; font-size: 13px; height: 36px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; }
     .mock .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .mock .stat { background: #f7f7f8; border-radius: 10px; padding: 14px 16px; }
+    .mock .stat { background: #f7f7f8; border-radius: 10px; padding: 14px 16px; line-height: 1.4; }
     .mock .stat small { display: inline-block; font-size: 12px; color: #6b6b74; }
     .mock .stat strong { display: block; font-size: 26px; font-weight: 600; margin: 4px 0; }
     .mock .pill { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 5px; }
@@ -114,65 +129,79 @@
     .mock .bar { width: 40px; border-radius: 5px; background: #dcdafb; }
     .mock .bar.hot { background: #5b54e8; }
 
-    section { padding: 96px 0 0; }
-    h2 { font-size: 30px; letter-spacing: -0.02em; font-weight: 600; margin: 0 0 8px; }
-    .section-lede { color: var(--muted); margin: 0 0 36px; max-width: 620px; }
+    /* Sections */
+    section { padding: 104px 0 0; }
+    .head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
+    h2 { font-size: clamp(30px, 4vw, 40px); letter-spacing: -0.025em; line-height: 1.12; font-weight: 600; margin: 0 0 12px; text-wrap: balance; }
+    .head p { color: var(--muted); margin: 0; font-size: 18px; text-wrap: pretty; }
 
-    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 40px; }
-    .feature { border-top: 1px solid var(--line); padding: 20px 0 30px; }
-    .feature h3 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
-    .feature p { margin: 0; color: var(--muted); font-size: 15px; }
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 24px; }
+    .feature .ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 14px; background: var(--tint); color: var(--tone); }
+    .feature .ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .feature h3 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+    .feature p { margin: 0; color: var(--muted); font-size: 15.5px; }
+    .rose   { --tint: #fbe3ea; --tone: #c22c5b; }
+    .amber  { --tint: #f9ecd6; --tone: #a8650c; }
+    .sky    { --tint: #dfeaf8; --tone: #2f66b3; }
+    .violet { --tint: #e9e4f8; --tone: #6a4fc4; }
+    .teal   { --tint: #dcf0ec; --tone: #1d7f70; }
+    .slate  { --tint: #e8e7e3; --tone: #55524b; }
+    @media (prefers-color-scheme: dark) {
+      .rose   { --tint: #3a2229; --tone: #f08aa8; }
+      .amber  { --tint: #3a2f1f; --tone: #e6b56c; }
+      .sky    { --tint: #1f2b3b; --tone: #8db5ea; }
+      .violet { --tint: #2b2640; --tone: #b6a4f2; }
+      .teal   { --tint: #1c3330; --tone: #7fd0c2; }
+      .slate  { --tint: #2b2a2e; --tone: #c4c0b8; }
+    }
 
-    figure { margin: 0; }
-    figure img { border-radius: 10px; border: 1px solid var(--line); }
-    figcaption { margin-top: 12px; font-size: 14px; color: var(--muted); }
-    figcaption strong { color: var(--ink); font-weight: 600; }
-    .figures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px 32px; }
-    .figures figure:first-child { grid-column: 1 / -1; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 15px; }
-    td { padding: 11px 0; border-top: 1px solid var(--line); vertical-align: top; }
-    td:first-child { width: 170px; white-space: nowrap; }
-    td:last-child { color: var(--muted); }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 28px; }
     .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
+    table { width: 100%; border-collapse: collapse; font-size: 16px; }
+    td { padding: 13px 0; border-top: 1px solid var(--line); vertical-align: top; }
+    tr:first-child td { border-top: 0; }
+    td:first-child { width: 160px; white-space: nowrap; }
+    td:last-child { color: var(--muted); }
 
-    details { border-top: 1px solid var(--line); }
-    details:last-child { border-bottom: 1px solid var(--line); }
-    summary { cursor: pointer; list-style: none; padding: 16px 0; font-weight: 500; display: flex; justify-content: space-between; gap: 16px; }
+    .faq { max-width: 760px; margin: 0 auto; }
+    details { border-bottom: 1px solid var(--line); }
+    summary { cursor: pointer; list-style: none; padding: 18px 0; font-weight: 500; font-size: 17px; display: flex; justify-content: space-between; gap: 16px; }
     summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; color: var(--muted); }
+    summary::after { content: "+"; color: var(--muted); font-size: 20px; line-height: 1; }
     details[open] summary::after { content: "−"; }
-    details p { margin: 0 0 18px; color: var(--muted); max-width: 720px; }
-    code { font: 0.9em var(--mono); }
-    .faq { max-width: 820px; }
+    details p { margin: 0 0 20px; color: var(--muted); }
+    code { font: 0.88em var(--mono); background: var(--kbd); padding: 1px 5px; border-radius: 5px; }
 
-    .closing { margin-top: 110px; padding: 44px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-    .closing img { width: 56px; height: 56px; }
-    .closing div { flex: 1; min-width: 220px; }
-    .closing h2 { font-size: 22px; margin: 0 0 2px; }
-    .closing p { margin: 0; color: var(--muted); }
+    .closing { margin-top: 112px; text-align: center; padding: 60px 24px; }
+    .closing img { width: 72px; height: 72px; margin: 0 auto 16px; }
+    .closing h2 { margin-bottom: 8px; }
+    .closing p { margin: 0 0 26px; color: #4a463f; }
+    @media (prefers-color-scheme: dark) { .closing p { color: #cfcac2; } }
 
-    footer { padding: 28px 0 48px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    footer { padding: 36px 0 52px; font-size: 14px; color: var(--muted); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     footer a { color: var(--muted); }
 
-    @media (max-width: 860px) {
+    @media (max-width: 880px) {
       .features { grid-template-columns: 1fr 1fr; }
-      .figures, .columns { grid-template-columns: 1fr; }
+      .columns { grid-template-columns: 1fr; }
+      .columns table + table tr:first-child td { border-top: 1px solid var(--line); }
       .mock { grid-template-columns: 1fr; }
       .mock .side { display: none; }
     }
     @media (max-width: 600px) {
       header.top nav { display: none; }
       header.top .button { margin-left: auto; }
-      .hero { padding-top: 56px; }
+      .hero { padding-top: 40px; }
       .features { grid-template-columns: 1fr; }
-      .stage { padding: 14px; }
+      .card { padding: 4px 18px; }
       .mock .main { padding: 16px; }
       .mock .stats { grid-template-columns: 1fr 1fr; }
       .mock .stat:nth-child(3), .mock .new { display: none; }
       .mock .chart { gap: 8px; }
       .mock .bar { width: 24px; }
-      td:first-child { width: 120px; }
+      td:first-child { width: 112px; }
+      .chapters { justify-content: flex-start; }
     }
   </style>
 </head>
@@ -181,6 +210,7 @@
     <div class="wrap">
       <a class="brand" href="#"><img src="assets/icon-256.png" alt="">PixelMark</a>
       <nav>
+        <a href="#tour">Tour</a>
         <a href="#features">Features</a>
         <a href="#shortcuts">Shortcuts</a>
         <a href="#faq">FAQ</a>
@@ -192,8 +222,8 @@
 
   <main class="wrap">
     <div class="hero">
-      <p class="kicker">A screen ruler for macOS</p>
-      <h1>Measure anything on your screen.</h1>
+      <img class="icon" src="assets/icon-256.png" alt="PixelMark app icon" width="96" height="96">
+      <h1>Measure anything on your screen.<span>Free and open source.</span></h1>
       <p class="lede">Press <kbd>⇧⌘2</kbd> and point. PixelMark finds the edges around the pointer and shows the size between them. Drag a box and it snaps to whatever is inside.</p>
       <div class="actions">
         <a class="button" href="https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg">
@@ -202,87 +232,137 @@
         </a>
         <a class="link" href="https://github.com/nearbycoder/pixelmark">Source on GitHub →</a>
       </div>
-      <p class="fine">Free and open source (MIT) · macOS 26 or later · Signed and notarized</p>
+      <p class="fine">macOS 26 or later · Apple silicon and Intel · Signed and notarized</p>
     </div>
 
-    <div class="demo">
-      <div class="dimension" aria-hidden="true"><i></i><span id="demo-width"></span><i></i></div>
-      <div class="stage" id="stage" aria-label="Interactive measuring demo">
-        <div class="mock" data-m>
-          <aside class="side" data-m>
-            <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
-            <div class="logo"><b data-m></b><span data-m>Orbit</span></div>
-            <div class="nav-item on" data-m>Overview</div>
-            <div class="nav-item" data-m>Projects</div>
-            <div class="nav-item" data-m>Team</div>
-            <div class="nav-item" data-m>Reports</div>
-          </aside>
-          <div class="main">
-            <div class="row">
-              <div><h3><span data-m>Good morning, Ava</span></h3><p class="sub"><span data-m>Here’s what’s happening today.</span></p></div>
-              <div class="new" data-m>New Project</div>
-            </div>
-            <div class="stats">
-              <div class="stat" data-m><small data-m>Active projects</small><strong><span data-m>24</span></strong><span class="pill" data-m style="background:#e4f6ea;color:#1d8a4b">+3 this week</span></div>
-              <div class="stat" data-m><small data-m>Open tasks</small><strong><span data-m>128</span></strong><span class="pill" data-m style="background:#fdf0e2;color:#c76a0d">12 due today</span></div>
-              <div class="stat" data-m><small data-m>Velocity</small><strong><span data-m>92%</span></strong><span class="pill" data-m style="background:#ebeafc;color:#4a43d6">+8%</span></div>
-            </div>
-            <div class="chart" data-m>
-              <div class="bar" data-m style="height:45%"></div><div class="bar" data-m style="height:70%"></div><div class="bar" data-m style="height:55%"></div>
-              <div class="bar hot" data-m style="height:92%"></div><div class="bar" data-m style="height:62%"></div><div class="bar" data-m style="height:38%"></div><div class="bar" data-m style="height:75%"></div>
+    <div class="tour" id="tour">
+      <div class="wall">
+        <div class="frame">
+          <video id="video" src="assets/demo.mp4" poster="assets/demo-poster.jpg" muted playsinline loop controls preload="metadata" aria-label="A one-minute tour of every PixelMark feature"></video>
+        </div>
+      </div>
+      <ul class="chapters" id="chapters">
+        <li><button type="button" data-t="3.8">Hover <time>0:03</time></button></li>
+        <li><button type="button" data-t="10.9">Color <time>0:10</time></button></li>
+        <li><button type="button" data-t="13.8">Boxes <time>0:13</time></button></li>
+        <li><button type="button" data-t="20.2">Copy size <time>0:20</time></button></li>
+        <li><button type="button" data-t="23.2">Pin <time>0:23</time></button></li>
+        <li><button type="button" data-t="27.9">Tolerance <time>0:27</time></button></li>
+        <li><button type="button" data-t="30.7">Spacing <time>0:30</time></button></li>
+        <li><button type="button" data-t="39.5">Guides <time>0:39</time></button></li>
+        <li><button type="button" data-t="44.5">Units <time>0:44</time></button></li>
+        <li><button type="button" data-t="48.3">Nudge <time>0:48</time></button></li>
+        <li><button type="button" data-t="50.3">Screenshot <time>0:50</time></button></li>
+        <li><button type="button" data-t="54.6">Shortcuts <time>0:54</time></button></li>
+      </ul>
+    </div>
+
+    <section id="try">
+      <div class="head">
+        <h2>Try it here</h2>
+        <p>Hover over this window, drag a box around something, or click to pin. The app does the same thing with real pixels, anywhere on your Mac.</p>
+      </div>
+      <div class="wall">
+        <div class="stage" id="stage" aria-label="Interactive measuring demo">
+          <div class="mock" data-m>
+            <aside class="side" data-m>
+              <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+              <div class="logo"><b data-m></b><span data-m>Orbit</span></div>
+              <div class="nav-item on" data-m>Overview</div>
+              <div class="nav-item" data-m>Projects</div>
+              <div class="nav-item" data-m>Team</div>
+              <div class="nav-item" data-m>Reports</div>
+            </aside>
+            <div class="main">
+              <div class="row">
+                <div><h3><span data-m>Good morning, Ava</span></h3><p class="sub"><span data-m>Here’s what’s happening today.</span></p></div>
+                <div class="new" data-m>New Project</div>
+              </div>
+              <div class="stats">
+                <div class="stat" data-m><small data-m>Active projects</small><strong><span data-m>24</span></strong><span class="pill" data-m style="background:#e4f6ea;color:#1d8a4b">+3 this week</span></div>
+                <div class="stat" data-m><small data-m>Open tasks</small><strong><span data-m>128</span></strong><span class="pill" data-m style="background:#fdf0e2;color:#c76a0d">12 due today</span></div>
+                <div class="stat" data-m><small data-m>Velocity</small><strong><span data-m>92%</span></strong><span class="pill" data-m style="background:#ebeafc;color:#4a43d6">+8%</span></div>
+              </div>
+              <div class="chart" data-m>
+                <div class="bar" data-m style="height:45%"></div><div class="bar" data-m style="height:70%"></div><div class="bar" data-m style="height:55%"></div>
+                <div class="bar hot" data-m style="height:92%"></div><div class="bar" data-m style="height:62%"></div><div class="bar" data-m style="height:38%"></div><div class="bar" data-m style="height:75%"></div>
+              </div>
             </div>
           </div>
+          <canvas id="overlay" aria-hidden="true"></canvas>
         </div>
-        <canvas id="overlay" aria-hidden="true"></canvas>
       </div>
       <div class="demo-caption">
-        <span>Try it: hover, drag a box, or click to pin. This demo measures page elements; the app measures pixels.</span>
+        <span>This demo measures page elements; the app measures pixels.</span>
         <button id="clear" type="button">Clear</button>
-      </div>
-    </div>
-
-    <section id="features">
-      <h2>Features</h2>
-      <p class="section-lede">When you press the shortcut, PixelMark takes a still image of each display and measures against it, so it works on anything: apps, websites, design files, images and video.</p>
-      <div class="features">
-        <div class="feature"><h3>Edge distances</h3><p>Lines run from the pointer to the nearest edge in each direction, labeled with the width and height between them.</p></div>
-        <div class="feature"><h3>Boxes that snap</h3><p>Drag around an element and the box shrinks to fit its content. Hold <kbd>⇧</kbd> for a free box.</p></div>
-        <div class="feature"><h3>Spacing</h3><p>Hold <kbd>⌥</kbd> over a box to see the gaps to its neighbors. Boxes that line up get alignment lines.</p></div>
-        <div class="feature"><h3>Guides</h3><p>Press <kbd>H</kbd> or <kbd>V</kbd> to drop a guide. Neighboring guides show the distance between them.</p></div>
-        <div class="feature"><h3>Loupe and colors</h3><p>See the pixels under the pointer up close. Press <kbd>C</kbd> to copy their hex value.</p></div>
-        <div class="feature"><h3>Copy and save</h3><p><kbd>⌘C</kbd> copies a size as <code>320 × 48</code>, CSS or SwiftUI. <kbd>⌘S</kbd> saves a screenshot with your marks.</p></div>
-        <div class="feature"><h3>Points or pixels</h3><p>Points match your design files; pixels are the device pixels on a Retina display. Press <kbd>U</kbd> to switch.</p></div>
-        <div class="feature"><h3>Adjustable tolerance</h3><p>Ignore shadows and anti-aliasing, or stop at a faint 1&nbsp;px border. Press <kbd>[</kbd> and <kbd>]</kbd> while measuring.</p></div>
-        <div class="feature"><h3>Private</h3><p>No account, analytics or network access. The screen image is discarded when you press <kbd>Esc</kbd>.</p></div>
       </div>
     </section>
 
-    <section>
-      <div class="figures">
-        <figure>
-          <img src="assets/shot-measure.jpg" alt="A chart bar measured at 64 by 189 points with a loupe showing #5C54F2, and a button boxed at 140 by 44" width="1260" height="900" loading="lazy">
-          <figcaption><strong>Hover and drag.</strong> The bar under the pointer is 64 × 189 pt; the button was boxed with a drag.</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/shot-spacing.jpg" alt="Three cards boxed, with dashed lines marking 24 point gaps between them" width="1260" height="900" loading="lazy">
-          <figcaption><strong>Spacing.</strong> Holding ⌥ over the middle card shows the gaps around it.</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/shot-guides.jpg" alt="Guides across the screen with their positions and the distance between them" width="1260" height="900" loading="lazy">
-          <figcaption><strong>Guides and pins.</strong> Guides show their position; clicking pins a measurement.</figcaption>
-        </figure>
+    <section id="features">
+      <div class="head">
+        <h2>Everything you need to check a layout</h2>
+        <p>PixelMark freezes the screen for a moment and reads its pixels, so it works on anything: apps, websites, design files, images and video.</p>
+      </div>
+      <div class="features">
+        <div class="feature rose">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12h18M12 3v18M3 9v6M21 9v6M9 3h6M9 21h6"/></svg></div>
+          <h3>Edge distances</h3>
+          <p>Lines run from the pointer to the nearest edge in each direction, labeled with the size between them.</p>
+        </div>
+        <div class="feature violet">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg></div>
+          <h3>Boxes that snap</h3>
+          <p>Drag around an element and the box shrinks to fit its content. Hold <kbd>⇧</kbd> for a free box.</p>
+        </div>
+        <div class="feature sky">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="6" height="10" rx="1.5"/><rect x="15" y="7" width="6" height="10" rx="1.5"/><path d="M10 12h4M10 10.5v3M14 10.5v3"/></svg></div>
+          <h3>Spacing</h3>
+          <p>Hold <kbd>⌥</kbd> over a box to see the gaps to its neighbors. Boxes that line up get alignment lines.</p>
+        </div>
+        <div class="feature teal">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 8h18M3 16h18" stroke-dasharray="3 2.5"/><path d="M8 3v18" stroke-dasharray="3 2.5"/></svg></div>
+          <h3>Guides</h3>
+          <p>Press <kbd>H</kbd> or <kbd>V</kbd> to drop a guide. Neighboring guides show the distance between them.</p>
+        </div>
+        <div class="feature amber">
+          <div class="ico"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M8 10.5h5M10.5 8v5"/></svg></div>
+          <h3>Loupe and colors</h3>
+          <p>See the pixels under the pointer up close, and press <kbd>C</kbd> to copy their hex value.</p>
+        </div>
+        <div class="feature slate">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></div>
+          <h3>Copy and save</h3>
+          <p><kbd>⌘C</kbd> copies a size as <code>320 × 48</code>, CSS or SwiftUI. <kbd>⌘S</kbd> saves a screenshot with your marks.</p>
+        </div>
+        <div class="feature teal">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><path d="M8 5v4M14 10v4M10 15v4"/></svg></div>
+          <h3>Points or pixels</h3>
+          <p>Points match your design files; pixels are the device pixels on a Retina display. Press <kbd>U</kbd> to switch.</p>
+        </div>
+        <div class="feature rose">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 18c3-8 5-12 8-12s5 4 8 12"/><path d="M4 21h16"/></svg></div>
+          <h3>Adjustable tolerance</h3>
+          <p>Ignore shadows and anti-aliasing, or stop at a faint 1&nbsp;px border. Press <kbd>[</kbd> and <kbd>]</kbd> while measuring.</p>
+        </div>
+        <div class="feature sky">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Private</h3>
+          <p>No account, analytics or network access. The screen image is discarded when you press <kbd>Esc</kbd>.</p>
+        </div>
       </div>
     </section>
 
     <section id="shortcuts">
-      <h2>Shortcuts</h2>
-      <p class="section-lede">Press <kbd>?</kbd> while measuring to see them on screen.</p>
-      <div class="columns">
+      <div class="head">
+        <h2>Shortcuts</h2>
+        <p>Press <kbd>?</kbd> while measuring to see them on screen.</p>
+      </div>
+      <div class="card columns">
         <table>
           <tr><td><kbd>⇧⌘2</kbd></td><td>Start measuring, from any app</td></tr>
           <tr><td><kbd>Drag</kbd></td><td>Box that snaps to its content</td></tr>
           <tr><td><kbd>⇧</kbd> <kbd>Drag</kbd></td><td>Free box</td></tr>
-          <tr><td><kbd>Click</kbd> or <kbd>Space</kbd></td><td>Pin the current measurement</td></tr>
+          <tr><td><kbd>Click</kbd> <kbd>Space</kbd></td><td>Pin the current measurement</td></tr>
           <tr><td><kbd>⌥</kbd></td><td>Spacing around the hovered box</td></tr>
           <tr><td><kbd>H</kbd> <kbd>V</kbd></td><td>Horizontal or vertical guide</td></tr>
         </table>
@@ -291,15 +371,17 @@
           <tr><td><kbd>C</kbd></td><td>Copy the color under the pointer</td></tr>
           <tr><td><kbd>⌘S</kbd> <kbd>⇧⌘S</kbd></td><td>Screenshot, or just the measured area</td></tr>
           <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Edge tolerance</td></tr>
-          <tr><td>Arrow keys</td><td>Move the pointer 1 px (⇧ for 10)</td></tr>
+          <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Move the pointer 1 px (⇧ for 10)</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Done</td></tr>
         </table>
       </div>
     </section>
 
     <section id="faq">
-      <h2>FAQ</h2>
-      <div class="faq" style="margin-top: 24px;">
+      <div class="head">
+        <h2>Questions</h2>
+      </div>
+      <div class="faq">
         <details>
           <summary>Why does it need Screen Recording permission?</summary>
           <p>To find edges it has to read the pixels on screen. Each time you press the shortcut it takes one still image per display, measures against it, and discards it when you finish. Nothing is saved or sent anywhere unless you press <kbd>⌘S</kbd>.</p>
@@ -327,13 +409,11 @@
       </div>
     </section>
 
-    <div class="closing">
+    <div class="closing wall">
       <img src="assets/icon-256.png" alt="">
-      <div>
-        <h2>PixelMark</h2>
-        <p>Free for macOS 26 or later.</p>
-      </div>
-      <a class="button" href="https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg">Download</a>
+      <h2>Get PixelMark</h2>
+      <p>Free for macOS 26 or later. It lives in your menu bar.</p>
+      <a class="button" href="https://github.com/nearbycoder/pixelmark/releases/latest/download/PixelMark.dmg">Download for Mac</a>
     </div>
 
     <footer>
@@ -344,12 +424,31 @@
 
   <script>
   (() => {
-    // The same idea as the app, using element boxes instead of pixels.
+    // Tour video: play while visible (unless reduced motion), and jump between chapters.
+    const video = document.getElementById('video');
+    const chapters = [...document.querySelectorAll('#chapters button')];
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !calm && !video.dataset.paused) video.play().catch(() => {});
+      else if (!entry.isIntersecting) video.pause();
+    }, { threshold: 0.35 }).observe(video);
+    video.addEventListener('pause', () => { if (document.visibilityState === 'visible' && video.getBoundingClientRect().top < innerHeight) video.dataset.paused = '1'; });
+    video.addEventListener('play', () => { delete video.dataset.paused; });
+    chapters.forEach(button => button.addEventListener('click', () => {
+      video.currentTime = Number(button.dataset.t);
+      video.play().catch(() => {});
+    }));
+    video.addEventListener('timeupdate', () => {
+      let current = null;
+      chapters.forEach(button => { if (Number(button.dataset.t) <= video.currentTime + 0.05) current = button; });
+      chapters.forEach(button => button.classList.toggle('on', button === current));
+    });
+
+    // Live demo: the same idea as the app, using element boxes instead of pixels.
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('overlay');
-    const widthLabel = document.getElementById('demo-width');
     const ctx = canvas.getContext('2d');
-    const mark = '#ff2d6f';
+    const mark = '#f2336f';
     let size = { w: 0, h: 0 }, rects = [], pointer = null, drag = null, boxes = [], pins = [];
 
     function layout() {
@@ -363,7 +462,6 @@
         const b = el.getBoundingClientRect();
         return { x: b.left - r.left, y: b.top - r.top, w: b.width, h: b.height };
       }).filter(b => b.w > 0 && b.h > 0);
-      widthLabel.textContent = `${Math.round(r.width)} pt`;
       draw();
     }
 
@@ -430,7 +528,7 @@
     }
 
     function box(r, strong) {
-      ctx.fillStyle = strong ? 'rgba(255,45,111,0.18)' : 'rgba(255,45,111,0.1)';
+      ctx.fillStyle = strong ? 'rgba(242,51,111,0.18)' : 'rgba(242,51,111,0.1)';
       ctx.fillRect(r.x, r.y, r.w, r.h);
       ctx.strokeStyle = mark; ctx.lineWidth = 1;
       ctx.strokeRect(Math.round(r.x) + 0.5, Math.round(r.y) + 0.5, Math.round(r.w) - 1, Math.round(r.h) - 1);
@@ -452,7 +550,7 @@
       pins.forEach(m => cross(m, true));
       if (drag && drag.moved) {
         const r = dragRect();
-        ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(255,45,111,0.6)';
+        ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(242,51,111,0.6)';
         ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h); ctx.restore();
         box(drag.free ? r : snap(r), true);
       } else if (pointer) {

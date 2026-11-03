@@ -20,6 +20,7 @@
 		A2E84F47E3566F6723F7008D /* OverlayRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A16CFC2BE1381D360395E0 /* OverlayRenderer.swift */; };
 		BD1126A912614F2E0FFE9109 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830B1B281B2ADFAB50CF3752 /* WelcomeView.swift */; };
 		C3D5848F1B3CA3A45D4BF0F1 /* ScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93CE295FF93F2AAC5F2399E /* ScreenCapture.swift */; };
+		D74C8B68515D471160E7B65F /* DemoVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8B03050EFD03D847EA8AA9 /* DemoVideo.swift */; };
 		E4D563023FBCF783ABC61321 /* HotKeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63801EEC583CD3F88353A389 /* HotKeyCenter.swift */; };
 		F8D0352E4343F72A0AE12892 /* MeasureSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1704A4BF9C04D3C447974DA2 /* MeasureSession.swift */; };
 		FEB71D6963F17F4EDB868439 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA50A7691C1FEAD1EF0E0C4 /* SettingsView.swift */; };
@@ -36,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0E8B03050EFD03D847EA8AA9 /* DemoVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoVideo.swift; sourceTree = "<group>"; };
 		1704A4BF9C04D3C447974DA2 /* MeasureSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureSession.swift; sourceTree = "<group>"; };
 		25A16CFC2BE1381D360395E0 /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
 		2BD619DDFF8FC2D587FF2B4B /* OverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayView.swift; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
 			children = (
 				E960B2D8149A2C7D02CDFB08 /* AppCoordinator.swift */,
 				2F55B863E5D6D922CA287ACB /* AppSettings.swift */,
+				0E8B03050EFD03D847EA8AA9 /* DemoVideo.swift */,
 				A213FF9F43904F0052567061 /* Harness.swift */,
 				63801EEC583CD3F88353A389 /* HotKeyCenter.swift */,
 				D3900F9B0FA47303ECB3BDAB /* HUDView.swift */,
@@ -225,6 +228,7 @@
 			files = (
 				2FEA668DBFC2DE76533103AD /* AppCoordinator.swift in Sources */,
 				7EDF444D33A7E172E789908E /* AppSettings.swift in Sources */,
+				D74C8B68515D471160E7B65F /* DemoVideo.swift in Sources */,
 				55DC0F7F05EE24F741E2A863 /* HUDView.swift in Sources */,
 				3002263EACC109B43A5539CC /* Harness.swift in Sources */,
 				E4D563023FBCF783ABC61321 /* HotKeyCenter.swift in Sources */,

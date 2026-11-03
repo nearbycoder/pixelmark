@@ -24,6 +24,21 @@ final class HUDModel: ObservableObject {
         }
     }
 
+    #if DEBUG
+    /// Names the feature being shown in the demo video.
+    struct Caption: Equatable {
+        let id = UUID()
+        var keys: [String]
+        var text: String
+    }
+
+    @Published var caption: Caption?
+
+    func showCaption(keys: [String], text: String) {
+        withAnimation(.smooth(duration: 0.35)) { caption = Caption(keys: keys, text: text) }
+    }
+    #endif
+
     func moveBar(toTop: Bool) {
         guard atTop != toTop else { return }
         withAnimation(.spring(duration: 0.35, bounce: 0.2)) { atTop = toTop }
@@ -55,6 +70,14 @@ struct HUDView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: model.atTop ? .top : .bottom)
                 .padding(.top, max(topInset, 30) + 10)
                 .padding(.bottom, 28)
+
+                #if DEBUG
+                if let caption = model.caption {
+                    CaptionView(caption: caption)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top, 64)
+                }
+                #endif
 
                 if model.showHelp {
                     ShortcutSheet { withAnimation(.snappy) { model.showHelp = false } }
@@ -153,6 +176,34 @@ struct HUDView: View {
         .help("How different two colors must be to count as an edge ([ and ])")
     }
 }
+
+#if DEBUG
+private struct CaptionView: View {
+    let caption: HUDModel.Caption
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 5) {
+                ForEach(caption.keys, id: \.self) { key in
+                    Text(key)
+                        .font(.system(size: 17, weight: .semibold))
+                        .padding(.horizontal, 9)
+                        .frame(minWidth: 32, minHeight: 32)
+                        .background(.primary.opacity(0.1), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
+            }
+            Text(caption.text)
+                .font(.system(size: 19, weight: .medium))
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 22)
+        .frame(height: 52)
+        .glassEffect(.regular, in: .capsule)
+        .id(caption.id)
+        .transition(.opacity.combined(with: .offset(y: -8)))
+    }
+}
+#endif
 
 struct KeyHint: View {
     let keys: [String]

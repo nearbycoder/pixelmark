@@ -74,7 +74,8 @@ final class AppSettings: ObservableObject {
         static let hasOnboarded = "hasOnboarded"
     }
 
-    private let defaults = UserDefaults.standard
+    /// Scripted debug runs keep their settings apart from the real ones.
+    private let defaults = AppCoordinator.isHarness ? UserDefaults(suiteName: "dev.nearby.PixelMark.harness")! : .standard
 
     @Published var unit: MeasureUnit { didSet { defaults.set(unit.rawValue, forKey: Key.unit) } }
     /// Largest per-channel difference (0–255) that still counts as the same color when finding edges.
